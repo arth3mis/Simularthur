@@ -20,6 +20,13 @@
             <artifactId>commons-math3</artifactId>
             <version>3.6.1</version>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.eclipse.collections/eclipse-collections -->
+        <dependency>
+            <groupId>org.eclipse.collections</groupId>
+            <artifactId>eclipse-collections</artifactId>
+            <version>11.0.0</version>
+        </dependency>
     </dependencies>
 
 </project>
