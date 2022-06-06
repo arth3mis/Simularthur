@@ -1,3 +1,3 @@
 package in.freye.physics;
 
-public enum ShapeType { SPHERE, CUBOID }
+public enum ShapeType { SPHERE }

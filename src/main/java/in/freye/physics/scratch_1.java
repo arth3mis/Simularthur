@@ -6,49 +6,51 @@ import org.eclipse.collections.api.list.ImmutableList;
 
 class Scratch {
     public static void main(String[] args) {
-        Shape p = new Sphere(1, null);
-        ImmutableList<Shape> l = Lists.immutable.of(p);
-        ImmutableList<Shape> m = l.newWith(new Sphere(2, null));
-        System.out.println(p);
-        System.out.println(m.get(0));
+        // todo test immutability
         Vector3D size = new Vector3D(0, -9.81, 0);
         Vector3D grav = new Vector3D(0, -9.81, 0);
         Physicable simulation = new World(size).setGravity(grav);
         simulation.toString();
+        simulation.spawn(simulation
+                .at(new Vector3D(0.5,0.5,0.5))
+                .stationary()
+                .createSphere(0.2, 1));
     }
 }
 
 
-class C1 {
-    ShapeType type;
-    float density;
-    public C1(ShapeType type, float density) {
-        this.type = type;
-        this.density = density;
-    }
-    public C2 at(Vector3D position) {
-        return new C2(type, density, position);
+class C0 {
+    protected Vector3D pos=Vector3D.ZERO, vel=Vector3D.ZERO, acc=Vector3D.ZERO;
+    protected boolean stationary=false;
+
+    public Sphere createSphere(double radius, double materialDensity) {
+        return new Sphere(pos, vel, acc, stationary, radius, materialDensity);
     }
 }
 
-class C2 extends C1 {
-    Vector3D pos, vel=null, acc=null;
-    public C2(ShapeType type, float density, Vector3D pos) {
-        super(type, density);
+class C1 extends C0 {
+    public C1(Vector3D pos) {
         this.pos = pos;
     }
-    public C2 withVelocity(Vector3D velocity) {
-        vel = velocity;
-        return this;
+    public C2 with(Vector3D velocity, Vector3D acceleration) {
+        return new C2(pos, velocity, acceleration);
     }
-    public C2 withAcceleration(Vector3D acceleration) {
-        acc = acceleration;
-        return this;
+    public C3 stationary() {
+        return new C3(pos);
     }
-    public Shape go() {
-        switch (type) {
-            case SPHERE -> new Sphere(density, pos);
-        }
-        return null;
+}
+
+class C2 extends C0 {
+    public C2(Vector3D pos, Vector3D vel, Vector3D acc) {
+        this.pos = pos;
+        this.vel = vel;
+        this.acc = acc;
+    }
+}
+
+class C3 extends C0 {
+    public C3(Vector3D pos) {
+        this.pos = pos;
+        stationary = true;
     }
 }

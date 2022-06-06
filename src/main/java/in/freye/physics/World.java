@@ -3,6 +3,7 @@ package in.freye.physics;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.Arrays;
 
@@ -16,15 +17,16 @@ public class World implements Physicable {
 
     public World(Vector3D size, Vector3D gravity, ImmutableList<Shape> entities) {
         assert size != null && gravity != null && entities != null : "Die Werte müssen eine Initialisierung haben";
-        assert Arrays.stream(size.toArray()).allMatch(d -> d > 0) : "Die Welt muss ein realer Quader sein";
+        assert Arrays.stream(size.toArray()).allMatch(d -> d > 0) : "Der Raum muss ein realer Quader sein";
         this.size = size;
         this.gravity = gravity;
         this.entities = entities;
     }
 
-    public C1 create(ShapeType type, float density) {
-        assert density >= 0 : "Dichte kann nicht negativ sein";
-        return new C1(type, density);
+    public C1 at(Vector3D position) {
+        assert position != null && !position.isNaN() && Arrays.stream(position.toArray()).allMatch(d -> d >= 0)
+                && position.getX() < size.getX() && position.getY() < size.getY() && position.getZ() < size.getZ() : "Die Position muss im Raum liegen";
+        return new C1(position);
     }
     public Physicable spawn(Shape entity) {
         assert entity != null : "Kein Element kann auch nicht spawnen";
@@ -32,7 +34,7 @@ public class World implements Physicable {
     }
 
     public Physicable setGravity(Vector3D newGravity) {
-        assert newGravity != null : "Gravitation muss messbar sein";
+        assert newGravity != null && !newGravity.isNaN() : "Gravitation muss in Rechnungen anwendbar sein";
         return new World(size, newGravity, entities);
     }
 

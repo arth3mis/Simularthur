@@ -2,17 +2,18 @@ package in.freye.physics;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
+import static java.lang.Math.PI;
+
 public class Sphere extends Shape {
 
-    Sphere(float density, Vector3D pos) {
-        super(density, pos);
-    }
+    final double radius;
 
-    protected Sphere(float mass, boolean stationary, double gravity, Vector3D pos, Vector3D vel, Vector3D acc) {
-        super(mass, stationary, gravity, pos, vel, acc);
+    Sphere(Vector3D pos, Vector3D vel, Vector3D acc, boolean stationary, double radius, double density) {
+        super(pos, vel, acc, stationary, density * 4.0/3.0 * PI * radius * radius * radius, density);
+        this.radius = radius;
     }
 
     Sphere copy() {
-        return new Sphere(mass, stationary, gravity, pos, vel, acc);
+        return new Sphere(pos, vel, acc, stationary, radius, density);
     }
 }

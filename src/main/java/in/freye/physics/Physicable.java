@@ -4,7 +4,7 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
 public interface Physicable {
 
-    C1 create(ShapeType type, float density);
+    C1 at(Vector3D position);
     Physicable spawn(Shape entity);
 
     Physicable setGravity(Vector3D newGravity);
