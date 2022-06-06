@@ -3,7 +3,6 @@ package in.freye.physics;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
-import org.eclipse.collections.impl.factory.Maps;
 
 import java.util.Arrays;
 
@@ -23,14 +22,19 @@ public class World implements Physicable {
         this.entities = entities;
     }
 
+    public Physicable spawn(Shape entity) {
+        assert entity != null : "Kein Element kann auch nicht spawnen";
+        return new World(size, gravity, entities.newWith(entity));
+    }
+
     public C1 at(Vector3D position) {
         assert position != null && !position.isNaN() && Arrays.stream(position.toArray()).allMatch(d -> d >= 0)
                 && position.getX() < size.getX() && position.getY() < size.getY() && position.getZ() < size.getZ() : "Die Position muss im Raum liegen";
         return new C1(position);
     }
-    public Physicable spawn(Shape entity) {
-        assert entity != null : "Kein Element kann auch nicht spawnen";
-        return new World(size, gravity, entities.newWith(entity));
+
+    public Physicable update(double deltaTime) {
+        return null;
     }
 
     public Physicable setGravity(Vector3D newGravity) {

@@ -1,8 +1,6 @@
 package in.freye.physics;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
-import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.list.ImmutableList;
 
 class Scratch {
     public static void main(String[] args) {
@@ -14,7 +12,7 @@ class Scratch {
         simulation.spawn(simulation
                 .at(new Vector3D(0.5,0.5,0.5))
                 .stationary()
-                .createSphere(0.2, 1));
+                .creatingSphere(0.2, 1));
     }
 }
 
@@ -23,7 +21,7 @@ class C0 {
     protected Vector3D pos=Vector3D.ZERO, vel=Vector3D.ZERO, acc=Vector3D.ZERO;
     protected boolean stationary=false;
 
-    public Sphere createSphere(double radius, double materialDensity) {
+    public Sphere creatingSphere(double radius, double materialDensity) {
         return new Sphere(pos, vel, acc, stationary, radius, materialDensity);
     }
 }

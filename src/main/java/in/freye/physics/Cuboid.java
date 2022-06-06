@@ -6,7 +6,5 @@ public class Cuboid {
 
     Cuboid(float density, Vector3D pos) {
 //        super(density, pos);
-        Physicable x = new World(new Vector3D(1,1,1));
-        x.at(Vector3D.ZERO).stationary = false;
     }
 }
