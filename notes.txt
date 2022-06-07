@@ -1,0 +1,65 @@
+loses zeug -----------------------------
+
+wie könnte ein monitoring fall aussehen, der den algorithmus beobachtet?
+    vielleicht eine größere zahl kugeln, die auf einer achse liegen und von einer angestoßen werden
+    oder einfacher: ein frame vor kollision, dann overlap durch pos+vel, um koll erk. und antw. zu testen
+
+
+anmerken (in DOK(?)), dass Vector3D immutabel ist
+
+
+
+Quellen:
+
+
+
+Libraries:
+https://commons.apache.org/proper/commons-math/
+https://www.eclipse.org/collections/
+
+
+TODO --------
+(PRD)
+VAL
+DOK
+IND
+
+
+DEV --------
+
+IL
+-mass or density user input
+
+AL
+-wenn update() kacke wird, mach Shape & sphere mutabel, arbeite mit copy und Getters
+    entities copy: Lists.immutable.fromStream(entities.stream().map(Shape::copy))
+
+
+/ loses zeug ---------------------------
+
+
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+Konzept:
+
+Anwendung:
+Ich möchte eine Physics Engine programmieren, die dreidimensionale Körper,
+ihre Bewegungen und Interaktionen in einem Raum simuliert.
+Die Engine soll möglichst realistisch sein, aber einige Konzepte auf ein intuitives Level reduzieren.
+Als User hat man eine 3D-Ansicht der "Welt" sowie ein Control Panel,
+das Informationen anzeigt und Möglichkeiten zur Manipulation der Ansicht & Welt besitzt.
+In der Welt soll darüber mindestens möglich sein:
+    - Neuen Körper mit Eigenschaften erschaffen
+    - Körper zerstören
+    - Zeit fortschreiten lassen und Änderungen simulieren
+
+--------------------------------------------------------------------------------------------
+Algorithmus:
+Der Algorithmus, der zum Einsatz kommen soll, führt einen Zeitschritt im physikalischen System aus
+("update"-Methode) und erledigt alle Berechnungen der Änderungen im System.
+Für jeden vorhandenen Körper müssen u.a.
+    - Bewegungsgleichungen
+    - Kräfte mit Wirkung auf Bewegung
+    - Kollisionserkennungen und -antworten mit Wänden und jedem anderen Körper (inklusive Impulserhaltung)
+berechnet werden.
+
