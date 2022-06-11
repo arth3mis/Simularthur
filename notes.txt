@@ -46,6 +46,8 @@ Anwendung:
 Ich möchte eine Physics Engine programmieren, die dreidimensionale Körper,
 ihre Bewegungen und Interaktionen in einem Raum simuliert.
 Die Engine soll möglichst realistisch sein, aber einige Konzepte auf ein intuitives Level reduzieren.
+Zunächst werde ich mich auf Kugeln fokussieren, da sie das einfachste Kollisionsverhalten haben
+und an ihnen auch eine Umsetzung komplexerer Eigenschaften wie Rotation oder Reibung realistisch scheint.
 Als User hat man eine 3D-Ansicht der "Welt" sowie ein Control Panel,
 das Informationen anzeigt und Möglichkeiten zur Manipulation der Ansicht & Welt besitzt.
 In der Welt soll darüber mindestens möglich sein:
@@ -57,9 +59,13 @@ In der Welt soll darüber mindestens möglich sein:
 Algorithmus:
 Der Algorithmus, der zum Einsatz kommen soll, führt einen Zeitschritt im physikalischen System aus
 ("update"-Methode) und erledigt alle Berechnungen der Änderungen im System.
+Die Rechenintensität entsteht durch viele Objekte in der Welt, die interagieren können,
+sowie die Anzahl und Komplexität der physikalischen Phänomene, die eingebunden werden.
 Für jeden vorhandenen Körper müssen u.a.
     - Bewegungsgleichungen
     - Kräfte mit Wirkung auf Bewegung
     - Kollisionserkennungen und -antworten mit Wänden und jedem anderen Körper (inklusive Impulserhaltung)
 berechnet werden.
-
+Der Algorithmus versucht, möglichst parallelisiert zu arbeiten, um effizient zu sein.
+Einige Schritte bauen jedoch auf vorherigen auf oder müssen Informationen über Objekte zwischenspeichern,
+daher ist ein kluges Zusammenspiel der verschiedenen Schritte erforderlich.

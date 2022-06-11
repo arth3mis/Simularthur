@@ -20,8 +20,8 @@ public class Sphere extends Shape {
     // g ist die Gravitation
     Shape update(double dt, Vector3D g) {
         if (!movable) return this;
-        // todo make wall collision here (maybe as 6 cuboids with AABB)
-        return new Sphere(pos.add(dt*dt,acc.add(g).scalarMultiply(0.5)).add(dt,vel), vel.add(dt,acc.add(g)), acc, true, radius, density);
+        // todo make wall collision here (maybe as 6 cuboids with AABB) -> walls are !movable, treat with priority
+        return new Sphere(pos.add(dt*dt,acc.add(g).scalarMultiply(0.5)).add(dt,vel), vel.add(dt,acc.add(g)), acc, movable, radius, density);
     }
 
     ImmutableSet<Shape> detectCollisions(ImmutableList<Shape> entities, int skipN) {

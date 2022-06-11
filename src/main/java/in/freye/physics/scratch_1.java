@@ -9,18 +9,19 @@ class Scratch {
         // todo test immutability
 
         Vector3D size = new Vector3D(1, 1, 1);
-        Vector3D grav = new Vector3D(0, -9.81, 0);
+        Vector3D grav = new Vector3D(0, -1, 0);
 
-        Physicable world = new World(1, size).setGravity(new Vector3D(0,-1,0));
+        Physicable world = new World(60, size).setGravity(grav);
 
         world = world.spawn(world
-                .at(new Vector3D(0.5,0.5,0.5))
+                .at(new Vector3D(0.5,0.49,0.5))
                 .with(new Vector3D(-0.08,0,-0.08), Vector3D.ZERO)
                 .newSphere(0.1, 238.732415));  // m=1kg
 
-        world = world.update(1);
+        Physicable world2 = world.update(1);
 
         //System.out.printf("Anzahl Elemente in Welt: %d\n", world.getEntities().length);
         System.out.println(world.getEntities()[0].pos);
+        System.out.println(world2.getEntities()[0].pos);
     }
 }
