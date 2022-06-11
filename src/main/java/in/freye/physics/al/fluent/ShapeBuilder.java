@@ -8,7 +8,7 @@ public class ShapeBuilder extends ShapingBase {
         this.pos = pos;
     }
 
-    public ShapeBuilderOptional1 with(Vector3D velocity, Vector3D acceleration) {
+    public ShapeBuilderOptional1 withVelocityAndAccel(Vector3D velocity, Vector3D acceleration) {
         return new ShapeBuilderOptional1(pos, velocity, acceleration);
     }
 

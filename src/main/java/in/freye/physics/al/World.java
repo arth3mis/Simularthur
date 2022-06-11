@@ -8,8 +8,8 @@ import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.impl.iterator.UnmodifiableIntIterator;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiFunction;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class World implements Physicable {
@@ -52,28 +52,40 @@ public class World implements Physicable {
     }
 
     public Physicable update(double timeStep) {
+        assert Double.isFinite(timeStep) : "timeStep darf negativ sein, aber NaN und Infinity sind nicht berechenbar";
         // Wenn eine höhere Update-Frequenz gefordert ist, als timeStep bietet, wird wiederholt aktualisiert
-        if (timeStep > 1/updateFreq)
-            return update(timeStep % (1/updateFreq)).update((int) (timeStep * updateFreq));
+        World world = this;
+        // todo testing
+        for (double dt = timeStep; Math.abs(dt) > 0; dt -= 1/updateFreq * Math.signum(timeStep))
+            world = new World(updateFreq, size, gravity, world.simulateChanges(Math.min(Math.abs(dt), 1/updateFreq) * Math.signum(timeStep)));
+        return world;
+
+            /*return Stream.iterate((Physicable) this, w -> w.update(1/updateFreq))
+                    .limit((int) (timeStep * updateFreq))
+                    .reduce(this, (v, w) -> w)
+                    .update(timeStep % (1/updateFreq));*/
+//        return update(timeStep % (1/updateFreq)).update((int) (timeStep * updateFreq));
 //        Physicable p = IntStream.range(0, (int) (timeStep * updateFreq)).boxed().reduce((Physicable) this, (w, x) -> w.update(1/updateFreq), (a, b) -> b);
 //        Physicable q = Stream.iterate((Physicable) this, w -> w.update(1/updateFreq)).limit((int) (timeStep * updateFreq)).reduce(this, (a, b) -> b);
-//        Physicable r = Stream.generate(() -> (Physicable) this)
-//                .limit((int) (timeStep * updateFreq))
-//                .reduce(this, (w, x) -> w.update(1/updateFreq));
-        // movement
-        ImmutableList<Shape> state1 = Lists.immutable.fromStream(entities.stream().parallel().map(e -> e.update(timeStep, gravity)));
-        return new World(updateFreq, size, gravity, state1);
+//        Physicable r = Stream.generate(() -> (Physicable) this).limit((int) (timeStep * updateFreq)).reduce(this, (w, x) -> w.update(1/updateFreq));
+
     }
 
-    /**  */
-    private World update(int n) {
-        if (n == 0) return this;
-        return ((World) update(1/updateFreq)).update(n - 1);
-    }
+//    /**  */
+//    private World update(int n) {
+//        if (n == 0) return this;
+//        return ((World) update(1/updateFreq)).update(n - 1);
+//    }
 
-    /**  */
-    private ImmutableList<Shape> collisions(ImmutableList<Shape> shapes) {
-        return entities;
+    /** Wendet physikalische Berechnungen auf jeden Körper an */
+    private ImmutableList<Shape> simulateChanges(double dt) {
+        // movement -> wallcoll -> entitycoll
+        // entities is final, so coll can be one call and no update interferes with other simultaneous ones
+        // todo check if parallel map ops change order in stream or returned list
+        return Lists.immutable.fromStream(entities.stream().parallel()
+                .map(e -> e.update(dt, gravity))
+                .map(e -> e.handleWallCollision(size))
+                .map(e -> e.handleEntityCollision(entities)));
     }
 
 

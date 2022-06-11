@@ -11,11 +11,11 @@ class Scratch {
         Vector3D size = new Vector3D(1, 1, 1);
         Vector3D grav = new Vector3D(0, -1, 0);
 
-        Physicable world = new World(60, size).setGravity(grav);
+        Physicable world = new World(2, size).setGravity(grav);
 
         world = world.spawn(world
                 .at(new Vector3D(0.5,0.49,0.5))
-                .with(new Vector3D(-0.08,0,-0.08), Vector3D.ZERO)
+                .withVelocityAndAccel(new Vector3D(-0.08,0,-0.08), Vector3D.ZERO)
                 .newSphere(0.1, 238.732415));  // m=1kg
 
         Physicable world2 = world.update(1);

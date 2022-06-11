@@ -19,7 +19,7 @@ public interface Physicable {
     /** Ändert die Gravitation der Welt */
     Physicable setGravity(Vector3D newGravity);
 
-    /**  */
+    /** Gibt die  */
     Vector3D getSize();
     /**  */
     Vector3D getGravity();
@@ -29,5 +29,10 @@ public interface Physicable {
     /**  */
     default boolean isEarthLike() {
         return getGravity().equals(new Vector3D(0, -9.81, 0));
+    }
+
+    /**  */
+    default Vector3D randomPos() {
+        return null;// todo
     }
 }
