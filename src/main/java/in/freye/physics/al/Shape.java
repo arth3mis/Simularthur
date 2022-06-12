@@ -5,7 +5,7 @@ import org.eclipse.collections.api.list.ImmutableList;
 
 public abstract class Shape {
 
-    final ShapeType type;
+    public final ShapeType type;
     public final Vector3D pos, vel, acc;
     final boolean movable;
     final double mass, density, bounciness;
@@ -20,10 +20,12 @@ public abstract class Shape {
         this.movable = movable;
         this.mass = mass;
         this.density = density;
-        this.bounciness = 0.9;//todo
+        this.bounciness = 0.9; // todo make changeable; implement threshold when vel is set to 0 instead of reflecting (prevent jittering)
     }
 
-    abstract Shape update(double dt, Vector3D gravity);
+    abstract Shape applyMovement(double dt, Vector3D gravity);
     abstract Shape handleWallCollision(Vector3D worldSize);
     abstract Shape handleEntityCollision(ImmutableList<Shape> entities);
+
+    //abstract Shape copy();
 }

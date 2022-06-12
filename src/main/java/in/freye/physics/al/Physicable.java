@@ -3,6 +3,9 @@ package in.freye.physics.al;
 import in.freye.physics.al.fluent.ShapeBuilder;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
+import java.util.Random;
+import java.util.stream.IntStream;
+
 public interface Physicable {
 
     /** Beginnt die Erstellung eines Körpers */
@@ -32,7 +35,7 @@ public interface Physicable {
     }
 
     /**  */
-    default Vector3D randomPos() {
-        return null;// todo
+    default Vector3D randomPos(double minDistToWall) {
+        return new Vector3D(IntStream.range(0,3).mapToDouble(i -> minDistToWall + Math.random() * (getSize().toArray()[i] - 2 * minDistToWall)).toArray());
     }
 }

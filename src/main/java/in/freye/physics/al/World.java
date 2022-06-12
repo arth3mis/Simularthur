@@ -3,14 +3,10 @@ package in.freye.physics.al;
 import in.freye.physics.al.fluent.ShapeBuilder;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.iterator.IntIterator;
 import org.eclipse.collections.api.list.ImmutableList;
-import org.eclipse.collections.impl.iterator.UnmodifiableIntIterator;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.BiFunction;
-import java.util.stream.Stream;
 
 public class World implements Physicable {
     private final double updateFreq;
@@ -23,8 +19,8 @@ public class World implements Physicable {
      *                        (Genauigkeitsgarantie des Systems)
      * @param size Größe des Quaders, der die Welt darstellt
      */
-    public World(double updateFrequency, Vector3D size) {
-        this(updateFrequency, size, Vector3D.ZERO, Lists.immutable.empty());
+    public static Physicable create(double updateFrequency, Vector3D size) {
+        return new World(updateFrequency, size, Vector3D.ZERO, Lists.immutable.empty());
     }
 
     private World(double updateFrequency, Vector3D size, Vector3D gravity, ImmutableList<Shape> entities) {
@@ -83,7 +79,7 @@ public class World implements Physicable {
         // entities is final, so coll can be one call and no update interferes with other simultaneous ones
         // todo check if parallel map ops change order in stream or returned list
         return Lists.immutable.fromStream(entities.stream().parallel()
-                .map(e -> e.update(dt, gravity))
+                .map(e -> e.applyMovement(dt, gravity))
                 .map(e -> e.handleWallCollision(size))
                 .map(e -> e.handleEntityCollision(entities)));
     }
