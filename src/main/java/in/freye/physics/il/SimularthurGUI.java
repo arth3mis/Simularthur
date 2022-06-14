@@ -5,6 +5,10 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import processing.core.PApplet;
 import processing.event.MouseEvent;
 
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
 public class SimularthurGUI extends PApplet {
 
     public static void main(String[] args) {
@@ -19,7 +23,8 @@ public class SimularthurGUI extends PApplet {
     }
 
     Physicable world;
-    float scale;
+    float scale = 1;
+    double simSpeed = 0;
 
     float yaw = 0, pitch = 0, distance = 200;
     boolean camLight = true;
@@ -27,11 +32,53 @@ public class SimularthurGUI extends PApplet {
 
     @Override
     public void setup() {
+        reset();
+    }
+
+    void reset() {
+        world = World.create(60, new Vector3D(1, 1, 1));//.setGravity(new Vector3D(0, -9.81, 0));
         scale = 100;
-        world = World.create(60, new Vector3D(1, 1, 1)).setGravity(new Vector3D(0, -9.81, 0));
-        world = world.spawn(world.at(new Vector3D(0.4, 0.7, 0.4))
-                .withVelocityAndAccel(new Vector3D(0,0,0), new Vector3D(0,0,0))
-                .newSphere(0.05, 1));
+//        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
+//                .limit(10)
+//                .reduce(world, (a, b) -> b);
+
+        // Gravitations-Bouncing & gute Visualisierung des Genauigkeitsversprechens
+        // todo & vel "perpetuum mobile" bug
+//        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
+//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, 1)))
+//                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+//        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
+//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
+//                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+
+
+//        world = world.spawn(world.at(new Vector3D(0.4, 0.7, 0.4))
+//                .withVelocityAndAccel(new Vector3D(0,0,0), new Vector3D(0,0,0))
+//                .newSphere(0.05, 1, 1));
+
+        // Impulserhaltung
+//        world = world.spawn(
+//                world.at(new Vector3D(0.8, 0.5, 0.4))
+//                        .withVelocityAndAccel(new Vector3D(-0.1,0,0), Vector3D.ZERO)
+//                        .newSphere(0.05,1, 1),
+//                world.at(new Vector3D(0.2, 0.5, 0.4))
+//                        .withVelocityAndAccel(new Vector3D(0.5,0,0), Vector3D.ZERO)
+//                        .newSphere(0.05,1, 1)
+//        );
+
+        // Überlappende Körper + Reaktion todo maybe make them not spread more than they should
+        world = world.spawn(
+                world.at(new Vector3D(0.5, 0.501, 0.4))
+                        .newSphere(0.05,1, 1),
+                world.at(new Vector3D(0.5, 0.5, 0.4))
+                        .newSphere(0.05,1, 1)
+        );
+        for (int i = 0; i < 8; i++) {
+            //world = world.spawn(world.getEntities()[1]);
+        }
+        //println(world.getEntities().length);
+
+        simSpeed = simSpeed;
     }
 
     @Override
@@ -82,14 +129,16 @@ public class SimularthurGUI extends PApplet {
         Shape[] shapes = world.getEntities();
         pushMatrix();
         translate(-(float) world.getSize().getX() * scale / 2, -(float) world.getSize().getY() * scale / 2, -(float) world.getSize().getZ() * scale / 2);
+        int i = 0;
         for (Shape s : shapes) {
             if (s.type == ShapeType.SPHERE) {
                 pushMatrix();
                 translate((float) s.pos.getX() * scale, (float) s.pos.getY() * scale, (float) s.pos.getZ() * scale);
                 noStroke();
-                fill(0, 200, 0);
+                fill(0, 200-i*0, 0);
                 sphere((float) ((Sphere) s).radius * scale);
                 popMatrix();
+                i++;
             }
         }
         popMatrix();
@@ -99,7 +148,16 @@ public class SimularthurGUI extends PApplet {
         //r += 0.02;
         //r %= 2 * PI;
 
-        world = world.update(1/60.0);
+        if (simSpeed != 0)
+            world = world.update(1/60.0 * simSpeed);
+    }
+
+    @Override
+    public void keyPressed() {
+        switch (key) {
+            case BACKSPACE -> reset();
+            case ' ' -> simSpeed = simSpeed == 0 ? 1 : 0;
+        }
     }
 
     @Override

@@ -10,9 +10,9 @@ public abstract class Shape {
     final boolean movable;
     final double mass, density, bounciness;
 
-    Shape(ShapeType type, Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double mass, double density) {
+    Shape(ShapeType type, Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double mass, double density, double bounciness) {
         assert World.isValidVector(pos) && World.isValidVector(vel) && World.isValidVector(acc) : "Die Position & Bewegung des Körpers muss definiert sein";
-        assert density >= 0 && mass >= 0 : "Dichte & Masse eines Materials dürfen nicht negativ sein";
+        assert density > 0 && mass > 0 && bounciness > 0: "Dichte, Masse und Reflexionsstärke eines Körpers müssen positiv sein";
         this.type = type;
         this.pos = pos;
         this.vel = vel;
@@ -20,7 +20,7 @@ public abstract class Shape {
         this.movable = movable;
         this.mass = mass;
         this.density = density;
-        this.bounciness = 0.9; // todo make changeable; implement threshold when vel is set to 0 instead of reflecting (prevent jittering)
+        this.bounciness = bounciness;
     }
 
     abstract Shape applyMovement(double dt, Vector3D gravity);
@@ -28,4 +28,10 @@ public abstract class Shape {
     abstract Shape handleEntityCollision(ImmutableList<Shape> entities);
 
     //abstract Shape copy();
+
+    public boolean equals(Object obj) {
+        if (obj == this) return true;
+        if (!(obj instanceof Shape s)) return false;  // hier wird implizit auch "obj == null" überprüft
+        return pos.equals(s.pos) && vel.equals(s.vel) && acc.equals(s.acc) && movable == s.movable && mass == s.mass && bounciness == s.bounciness;
+    }
 }

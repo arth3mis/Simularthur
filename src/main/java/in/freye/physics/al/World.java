@@ -1,6 +1,5 @@
 package in.freye.physics.al;
 
-import in.freye.physics.al.fluent.ShapeBuilder;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -37,7 +36,16 @@ public class World implements Physicable {
         return new ShapeBuilder(position);
     }
 
-    public Physicable spawn(Shape entity) {
+    public Physicable spawn(Shape... entities) {
+        assert entities != null : "Liste von Körpern muss existieren";
+        World w = this;
+        for (Shape shape : entities)
+            //if (!w.entities.contains(shape))  // Es darf keinen Körper geben, der nach shape.equals() gleich ist todo vllt doch? -> rng elements
+                w = w.spawn(shape);
+        return w;
+    }
+
+    private World spawn(Shape entity) {
         assert entity != null : "Kein Element kann auch nicht spawnen";
         return new World(updateFreq, size, gravity, entities.newWith(entity));
     }
@@ -50,9 +58,10 @@ public class World implements Physicable {
     public Physicable update(double timeStep) {
         assert Double.isFinite(timeStep) : "timeStep darf negativ sein, aber NaN und Infinity sind nicht berechenbar";
         // Wenn eine höhere Update-Frequenz gefordert ist, als timeStep bietet, wird wiederholt aktualisiert
+        // Methode: temporäre
         World world = this;
         // todo testing
-        for (double dt = timeStep; Math.abs(dt) > 0; dt -= 1/updateFreq * Math.signum(timeStep))
+        for (double dt = timeStep; Math.signum(dt) == Math.signum(timeStep); dt -= 1/updateFreq * Math.signum(timeStep))
             world = new World(updateFreq, size, gravity, world.simulateChanges(Math.min(Math.abs(dt), 1/updateFreq) * Math.signum(timeStep)));
         return world;
 
@@ -75,13 +84,16 @@ public class World implements Physicable {
 
     /** Wendet physikalische Berechnungen auf jeden Körper an */
     private ImmutableList<Shape> simulateChanges(double dt) {
-        // movement -> wallcoll -> entitycoll
-        // entities is final, so coll can be one call and no update interferes with other simultaneous ones
-        // todo check if parallel map ops change order in stream or returned list
-        return Lists.immutable.fromStream(entities.stream().parallel()
+        // todo check if parallel map ops change order in stream or returned list -> seems not to be the case
+        // Aktualisieren der Position und Geschwindigkeit durch allgemeine Gravitation oder gleichförmige Bewegung
+        ImmutableList<Shape> state1 = Lists.immutable.fromStream(entities.stream().parallel()
                 .map(e -> e.applyMovement(dt, gravity))
-                .map(e -> e.handleWallCollision(size))
-                .map(e -> e.handleEntityCollision(entities)));
+        // Gravitation durch andere Objekte (braucht die Liste der Körper im aktuellen Zustand)
+        // Kollisionen mit den Wänden
+                .map(e -> e.handleWallCollision(size)));
+        // Nach Bewegungsupdate kann Kollision zwischen Körpern getestet werden
+        return Lists.immutable.fromStream(state1.stream().parallel()
+                .map(e -> e.handleEntityCollision(state1)));
     }
 
 
@@ -106,12 +118,12 @@ public class World implements Physicable {
     }
 
     /** Testet den Vektor, dass er nicht null ist und keine NaN/Infinity-Werte enthält */
-    public static boolean isValidVector(Vector3D v) {
+    static boolean isValidVector(Vector3D v) {
         return v != null && Arrays.stream(v.toArray()).allMatch(Double::isFinite);
     }
 
     /** Testet jede Komponente des ersten Vektors gegen die des zweiten */
-    public static boolean compareComponents(Vector3D v, Vector3D w, BiFunction<Double, Double, Boolean> bf) {
+    static boolean compareComponents(Vector3D v, Vector3D w, BiFunction<Double, Double, Boolean> bf) {
         assert v != null && w != null : "Zum komponentenweisen Testen muss der andere Vektor existieren";
         return bf.apply(v.getX(), w.getX()) && bf.apply(v.getY(), w.getY()) && bf.apply(v.getZ(), w.getZ());
     }

@@ -10,6 +10,9 @@ anmerken (in DOK(?)), dass Vector3D immutabel ist
 
 
 Quellen:
+https://www.leifiphysik.de/mechanik/impulserhaltung-und-stoesse/grundwissen/zentraler-elastischer-stoss
+https://en.wikipedia.org/wiki/Physics_engine
+(if cuboids w/ AABB) https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
 
 
 
@@ -31,6 +34,8 @@ IL
 -mass or density user input
 
 AL
+-energieerhaltung? - ja, in kollisionsberechnung enthalten
+
 -wenn update() kacke wird, mach Shape & sphere mutabel, arbeite mit copy und Getters
     entities copy: Lists.immutable.fromStream(entities.stream().map(Shape::copy))
 

@@ -1,8 +1,8 @@
-package in.freye.physics.al.fluent;
+package in.freye.physics.al;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
-public class ShapeBuilderOptional1 extends ShapingBase {
+public class ShapeBuilderOptional1 extends ShapeBuilderBase {
 
     public ShapeBuilderOptional1(Vector3D pos, Vector3D vel, Vector3D acc) {
         this.pos = pos;
