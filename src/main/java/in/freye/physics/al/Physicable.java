@@ -16,9 +16,8 @@ public interface Physicable {
 
     /** Fügt einen oder mehrere Körper in die Welt ein */
     Physicable spawn(Shape... entities);
-    /** Löscht Körper aus der Welt */
-    Physicable destroy(int atIndex);
-    // todo add replace method, maybe instead of destroy, but with null param -> call destroy internally
+    /** Ersetzt Körper in der Welt (löscht, wenn null übergeben wird) */
+    Physicable replace(int atIndex, Shape entity);
 
     /** Simuliert die Änderungen im System, die im Zeitschritt deltaTime (Einheit Sekunde) passieren */
     Physicable update(double deltaTime);

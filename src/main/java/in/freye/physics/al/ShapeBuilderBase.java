@@ -13,6 +13,6 @@ public abstract class ShapeBuilderBase {
      * @param bounciness Dämpfungs- bzw. Reflexions-Faktor für Geschwindigkeit bei Kollisionen
      */
     public Shape newSphere(double radius, double materialDensity, double bounciness) {
-        return new Sphere(pos, vel, acc, movable, radius, materialDensity, bounciness);
+        return new Sphere(-1, pos, vel, acc, movable, radius, materialDensity, bounciness);
     }
 }

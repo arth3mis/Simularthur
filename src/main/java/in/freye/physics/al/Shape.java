@@ -5,14 +5,16 @@ import org.eclipse.collections.api.list.ImmutableList;
 
 public abstract class Shape {
 
+    public final long id;
     public final ShapeType type;
     public final Vector3D pos, vel, acc;
     final boolean movable;
     final double mass, density, bounciness;
 
-    Shape(ShapeType type, Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double mass, double density, double bounciness) {
+    Shape(long id, ShapeType type, Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double mass, double density, double bounciness) {
         assert World.isValidVector(pos) && World.isValidVector(vel) && World.isValidVector(acc) : "Die Position & Bewegung des Körpers muss definiert sein";
         assert density > 0 && mass > 0 && bounciness > 0: "Dichte, Masse und Reflexionsstärke eines Körpers müssen positiv sein";
+        this.id = id;
         this.type = type;
         this.pos = pos;
         this.vel = vel;
@@ -29,9 +31,12 @@ public abstract class Shape {
 
     //abstract Shape copy();
 
+    abstract Shape indexed(long id);
+
     public boolean equals(Object obj) {
         if (obj == this) return true;
-        if (!(obj instanceof Shape s)) return false;  // hier wird implizit auch "obj == null" überprüft
-        return pos.equals(s.pos) && vel.equals(s.vel) && acc.equals(s.acc) && movable == s.movable && mass == s.mass && bounciness == s.bounciness;
+        if (!(obj instanceof Shape that)) return false;  // hier wird implizit auch "obj == null" überprüft
+        // Gleichheit von Körpern wird nur durch "id" definiert
+        return this.id != -1 && this.id == that.id;
     }
 }

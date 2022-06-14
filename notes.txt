@@ -34,6 +34,7 @@ IL
 -mass or density user input
 
 AL
+-id rausmachen, wenn equals nicht wirklich gebraucht (lieber kein same-pos als feature erlauben)
 -energieerhaltung? - ja, in kollisionsberechnung enthalten
 
 -wenn update() kacke wird, mach Shape & sphere mutabel, arbeite mit copy und Getters

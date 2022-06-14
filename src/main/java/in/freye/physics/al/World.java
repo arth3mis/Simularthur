@@ -11,6 +11,7 @@ public class World implements Physicable {
     private final double updateFreq;
     private final Vector3D size, gravity;
     private final ImmutableList<Shape> entities;
+    private static long idCounter = 0;
 
     /**
      * Erstellt eine neue Welt für physikalische Simulation
@@ -40,8 +41,8 @@ public class World implements Physicable {
         assert entities != null : "Liste von Körpern muss existieren";
         World w = this;
         for (Shape shape : entities)
-            //if (!w.entities.contains(shape))  // Es darf keinen Körper geben, der nach shape.equals() gleich ist todo vllt doch? -> rng elements
-                w = w.spawn(shape);
+            if (w.entities.allSatisfy(e -> !e.pos.equals(shape.pos)))  // Zwei Körper dürfen nicht dieselbe Position haben
+                w = w.spawn(shape.indexed(idCounter++));
         return w;
     }
 
@@ -50,15 +51,21 @@ public class World implements Physicable {
         return new World(updateFreq, size, gravity, entities.newWith(entity));
     }
 
-    public Physicable destroy(int atIndex) {
+    public Physicable replace(int atIndex, Shape entity) {
         assert atIndex >= 0 && atIndex < entities.size() : "Der Index muss in [0;Anzahl_Entities_in_Welt[ liegen";
+        if (entity == null) return destroy(atIndex);
+        // Neue Liste setzt sich aus
+        return new World(updateFreq, size, gravity, entities.take(atIndex).newWith(entity).newWithAll(entities.drop(atIndex)));
+    }
+
+    /** Löscht Objekt an angegebener Stelle */
+    private Physicable destroy(int atIndex) {
         return new World(updateFreq, size, gravity, entities.newWithout(entities.get(atIndex)));
     }
 
     public Physicable update(double timeStep) {
         assert Double.isFinite(timeStep) : "timeStep darf negativ sein, aber NaN und Infinity sind nicht berechenbar";
         // Wenn eine höhere Update-Frequenz gefordert ist, als timeStep bietet, wird wiederholt aktualisiert
-        // Methode: temporäre
         World world = this;
         // todo testing
         for (double dt = timeStep; Math.signum(dt) == Math.signum(timeStep); dt -= 1/updateFreq * Math.signum(timeStep))
@@ -88,7 +95,7 @@ public class World implements Physicable {
         // Aktualisieren der Position und Geschwindigkeit durch allgemeine Gravitation oder gleichförmige Bewegung
         ImmutableList<Shape> state1 = Lists.immutable.fromStream(entities.stream().parallel()
                 .map(e -> e.applyMovement(dt, gravity))
-        // Gravitation durch andere Objekte (braucht die Liste der Körper im aktuellen Zustand)
+        // todo Gravitation durch andere Objekte (braucht die Liste der Körper im aktuellen Zustand)
         // Kollisionen mit den Wänden
                 .map(e -> e.handleWallCollision(size)));
         // Nach Bewegungsupdate kann Kollision zwischen Körpern getestet werden

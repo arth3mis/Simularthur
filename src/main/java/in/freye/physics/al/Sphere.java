@@ -9,10 +9,10 @@ public class Sphere extends Shape {
 
     public final double radius;
 
-    Sphere(Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double radius, double density, double bounciness) {
-        super(ShapeType.SPHERE, pos, vel, acc, movable, density * 4.0/3.0 * PI * radius * radius * radius, density, bounciness);
+    Sphere(long id, Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double radius, double density, double bounciness) {
+        super(id, ShapeType.SPHERE, pos, vel, acc, movable, density * 4.0/3.0 * PI * radius * radius * radius, density, bounciness);
         // radius >= 0 wird implizit im super() call abgesichert, da durch mass ~ radius³ die Masse negativ würde
-        // (oder bei Ausgleich durch negative Dichte der density assert anschlagen würde)
+        // (oder bei Ausgleich durch negative Dichte der "density"-Assert anschlagen würde)
         this.radius = radius;
     }
 
@@ -21,7 +21,7 @@ public class Sphere extends Shape {
         if (!movable) return this;
         // pos = 0.5 * acc * t² + vel * t
         // vel = acc * t
-        return new Sphere(
+        return new Sphere(id,
                 pos.add(dt*dt,acc.add(g).scalarMultiply(0.5)).add(dt,vel),
                 vel.add(dt,acc.add(g)),
                 acc, movable, radius, density, bounciness);
@@ -47,7 +47,7 @@ public class Sphere extends Shape {
                 a = new Vector3D(a.getX() * (i==0 ? 0 : 1), a.getY() * (i==1 ? 0 : 1), a.getZ() * (i==2 ? 0 : 1));
             }
         }
-        return new Sphere(p, v, a, movable, radius, density, bounciness);
+        return new Sphere(id, p, v, a, movable, radius, density, bounciness);
     }
 
     Shape handleEntityCollision(ImmutableList<Shape> entities) {
@@ -60,14 +60,23 @@ public class Sphere extends Shape {
                 .filter(e -> !e.equals(this) && e.type == ShapeType.SPHERE)
                 .map(e -> (Sphere) e)
                 .filter(e -> pos.distance(e.pos) < radius + e.radius)
-                .reduce(this, (a, b) -> {
-                    // Der zufällige Faktor ist zum Zerstreuen von Körpern an derselben Position
-                    //Vector3D p = a.pos.distance(b.pos) < Math.min(a.radius, b.radius) ? new Vector3D() : a.pos; todo
-                    return new Sphere(
-                        a.pos.add(a.pos.subtract(/*Math.random()*0.00002+0.99999*/1, b.pos).normalize().scalarMultiply(/* todo this might be quite good, since other gets old "this" and also does this collision*/0.5*(a.radius + b.radius - a.pos.distance(b.pos)))),
-                        a.vel.scalarMultiply(a.mass).add(b.mass, b.vel.scalarMultiply(2).subtract(a.vel)).scalarMultiply(bounciness / (a.mass + b.mass)),
-                        a.acc,  // todo what manipulation for acc? set something to 0, but angle is important
-                        a.movable, a.radius, a.density, a.bounciness);
-                });
+                .reduce(this, (a, b) -> new Sphere(id,
+                    a.pos.add(a.pos.subtract(b.pos)
+                            // Der zufällige Faktor ist zum Zerstreuen von Körpern an derselben Position
+                            .add(a.pos.distance(b.pos) == 0 ? 1 : 0,
+                                    new Vector3D((Math.random()*0.000002+0.000001)*(Math.random()<0.5?-1:1),
+                                            (Math.random()*0.000002+0.000001)*(Math.random()<0.5?-1:1),
+                                            (Math.random()*0.000002+0.000001)*(Math.random()<0.5?-1:1)))
+                            .normalize()
+                            .scalarMultiply(a.radius + b.radius - a.pos.distance(b.pos))
+                            // Korrigiert die Hälfte des Abstands, andere Kugel übernimmt die andere Hälfte
+                            .scalarMultiply(0.5)),
+                    a.vel.scalarMultiply(a.mass).add(b.mass, b.vel.scalarMultiply(2).subtract(a.vel)).scalarMultiply(bounciness / (a.mass + b.mass)),
+                    a.acc,  // todo what manipulation for acc? set something to 0, but angle is important
+                    a.movable, a.radius, a.density, a.bounciness));
+    }
+
+    Shape indexed(long id) {
+        return new Sphere(id, pos, vel, acc, movable, radius, density, bounciness);
     }
 }
