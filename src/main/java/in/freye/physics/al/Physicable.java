@@ -37,7 +37,10 @@ public interface Physicable {
         return getGravity().equals(new Vector3D(0, -9.81, 0));
     }
 
-    /** Generiert eine zufällige Position innerhalb des simulierten Raums */
+    /**
+     * Generiert eine zufällige Position innerhalb des simulierten Raums
+     * @param minDistToWall Jede Komponente liegt in [minDistToWall; size.get_X|Y|Z_() - minDistToWall[
+     */
     default Vector3D randomPos(double minDistToWall) {
         return new Vector3D(IntStream.range(0,3).mapToDouble(i -> minDistToWall + Math.random() * (getSize().toArray()[i] - 2 * minDistToWall)).toArray());
     }

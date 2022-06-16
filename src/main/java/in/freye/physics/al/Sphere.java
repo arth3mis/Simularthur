@@ -9,18 +9,26 @@ public class Sphere extends Shape {
 
     public final double radius;
 
-    Sphere(long id, Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double radius, double density, double bounciness) {
+    Sphere(Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double radius, double density, double bounciness) {
+        this(Shape.NO_ID, pos, vel, acc, movable, radius, density, bounciness);
+    }
+
+    private Sphere(long id, Vector3D pos, Vector3D vel, Vector3D acc, boolean movable, double radius, double density, double bounciness) {
         super(id, ShapeType.SPHERE, pos, vel, acc, movable, density * 4.0/3.0 * PI * radius * radius * radius, density, bounciness);
         // radius >= 0 wird implizit im super() call abgesichert, da durch mass ~ radius³ die Masse negativ würde
         // (oder bei Ausgleich durch negative Dichte der "density"-Assert anschlagen würde)
         this.radius = radius;
     }
 
-    // g ist die Gravitation
+    /**
+     * Wendet folgende Formeln an:
+     * pos = 0.5 * acc * dt² + vel * dt;
+     * vel = acc * dt;
+     * @param dt Zeitdifferenz der Änderung
+     * @param g Allgemeine Gravitation
+     */
     Shape applyMovement(double dt, Vector3D g) {
         if (!movable) return this;
-        // pos = 0.5 * acc * t² + vel * t
-        // vel = acc * t
         return new Sphere(id,
                 pos.add(dt*dt,acc.add(g).scalarMultiply(0.5)).add(dt,vel),
                 vel.add(dt,acc.add(g)),
@@ -53,30 +61,23 @@ public class Sphere extends Shape {
     Shape handleEntityCollision(ImmutableList<Shape> entities) {
         // Berechnung abhängig vom Typ des anderen Körpers
         //
-        // Kollision mit anderen Kugeln
-        // Geschwindigkeit wird über Impulserhaltung und Energieerhaltung berechnet:
+        // Geschwindigkeit wird über Impulserhaltung und Energieerhaltung berechnet (siehe Quelle "Leifi-Physik"):
         // newVelocity = (a.mass * a.vel + b.mass * (2 * b.vel - a.vel)) / (a.mass + b.mass) * bounciness
         return entities.stream()
-                .filter(e -> !e.equals(this) && e.type == ShapeType.SPHERE)
-                .map(e -> (Sphere) e)
+                // Nur Kollision mit anderen Kugeln
+                .filter(e -> !e.equals(this) && e.type == ShapeType.SPHERE).map(e -> (Sphere) e)
+                // Kollisionsdetektion: Abstand der Mittelpunkte < Summe der Radii
                 .filter(e -> pos.distance(e.pos) < radius + e.radius)
+                // Auswirkungen der Kollisionen auf "this" anwenden
                 .reduce(this, (a, b) -> new Sphere(id,
                     a.pos.add(a.pos.subtract(b.pos)
-                            // Der zufällige Faktor ist zum Zerstreuen von Körpern an derselben Position
-                            .add(a.pos.distance(b.pos) == 0 ? 1 : 0,
-                                    new Vector3D((Math.random()*0.000002+0.000001)*(Math.random()<0.5?-1:1),
-                                            (Math.random()*0.000002+0.000001)*(Math.random()<0.5?-1:1),
-                                            (Math.random()*0.000002+0.000001)*(Math.random()<0.5?-1:1)))
                             .normalize()
                             .scalarMultiply(a.radius + b.radius - a.pos.distance(b.pos))
-                            // Korrigiert die Hälfte des Abstands, andere Kugel übernimmt die andere Hälfte
+                            // Korrigiert die Hälfte des Abstands, andere Kugel "übernimmt" die andere Hälfte
                             .scalarMultiply(0.5)),
                     a.vel.scalarMultiply(a.mass).add(b.mass, b.vel.scalarMultiply(2).subtract(a.vel)).scalarMultiply(bounciness / (a.mass + b.mass)),
-                    a.acc,  // todo what manipulation for acc? set something to 0, but angle is important
+                    // orthogonale Zerlegung von acc: der Teil parallel zum Vektor (b.pos-a.pos) wird 0
+                    a.acc,//a.acc.subtract(b.pos.subtract(a.pos).scalarMultiply(a.acc.dotProduct(b.pos.subtract(a.pos)) / b.pos.subtract(a.pos).getNormSq())),  // todo test and think through
                     a.movable, a.radius, a.density, a.bounciness));
-    }
-
-    Shape indexed(long id) {
-        return new Sphere(id, pos, vel, acc, movable, radius, density, bounciness);
     }
 }

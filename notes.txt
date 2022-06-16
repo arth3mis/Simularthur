@@ -5,8 +5,22 @@ wie könnte ein monitoring fall aussehen, der den algorithmus beobachtet?
     oder einfacher: ein frame vor kollision, dann overlap durch pos+vel, um koll erk. und antw. zu testen
 
 
-anmerken (in DOK(?)), dass Vector3D immutabel ist
+DOK:
+-anmerken (in DOK(?)), dass Vector3D immutabel ist
+-Anzahl Objekte * Genauigkeitsversprechen ~ Rechenintensität
 
+-use randompos for slightly offset batch spawn
+	V3 p = world.randomPos(world.getSize().getX()/1.9).add(new V3(0,0.3,0));
+
+
+
+
+Eigenbeschleunigung: Damit lässt sich Zeug simulieren. Enthält keine
+    -"eigenbeschleunigung: wird nicht durch kraftfeld o.Ä. erzeugt, demnach ist es wie ein Triebwerk,
+das Energie zur Beschl. bereitstellt. Daher habe ich mich entschieden,
+diese Beschleunigung durch Kollisionen auf 0 zu setzen, denn IRL beschleunigen Objekte
+(Autos, Pistolenkugeln etc.) auch nicht mehr weiter, nachdem sie kollidiert sind.
+Externe Beschl. (Gravitation) wirken natürlich weiter"
 
 
 Quellen:
@@ -34,6 +48,10 @@ IL
 -mass or density user input
 
 AL
+-entitycoll: von acc bleibt nur noch acc_orthogonal_zu_posDiff
+
+-acc rausnehmen????
+
 -id rausmachen, wenn equals nicht wirklich gebraucht (lieber kein same-pos als feature erlauben)
 -energieerhaltung? - ja, in kollisionsberechnung enthalten
 
@@ -42,6 +60,22 @@ AL
 
 
 / loses zeug ---------------------------
+
+
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+Dokumentation:
+---
+Kurzbeschreibung:
+
+
+Algorithmus:
+
+
+Szenario:
+
+
+--------------------------------------------------------------------------------------------
 
 
 --------------------------------------------------------------------------------------------
