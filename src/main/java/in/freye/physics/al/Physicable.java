@@ -22,7 +22,7 @@ public interface Physicable {
     /** Simuliert die Änderungen im System, die im Zeitschritt deltaTime (Einheit Sekunde) passieren */
     Physicable update(double deltaTime);
 
-    /** Ändert die Gravitation der Welt */
+    /** Ändert die Beschleunigung durch allgemeine Gravitation der Welt */
     Physicable setGravity(Vector3D newGravity);
 
     /** Gibt die Größe des simulierten Raums zurück */
@@ -39,7 +39,7 @@ public interface Physicable {
 
     /**
      * Generiert eine zufällige Position innerhalb des simulierten Raums
-     * @param minDistToWall Jede Komponente liegt in [minDistToWall; size.get_X|Y|Z_() - minDistToWall[
+     * @param minDistToWall Jede Komponente liegt im Intervall [minDistToWall; size.get_X|Y|Z_() - minDistToWall[
      */
     default Vector3D randomPos(double minDistToWall) {
         return new Vector3D(IntStream.range(0,3).mapToDouble(i -> minDistToWall + Math.random() * (getSize().toArray()[i] - 2 * minDistToWall)).toArray());

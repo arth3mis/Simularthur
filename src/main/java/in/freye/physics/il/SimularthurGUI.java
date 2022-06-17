@@ -5,14 +5,20 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import processing.core.PApplet;
 import processing.event.MouseEvent;
 
-import java.util.stream.DoubleStream;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
 public class SimularthurGUI extends PApplet {
 
     public static void main(String[] args) {
-        PApplet.runSketch(new String[]{""}, new SimularthurGUI());
+        while (true) {
+            try {
+                PApplet.runSketch(new String[]{""}, new SimularthurGUI());
+                break;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -29,6 +35,11 @@ public class SimularthurGUI extends PApplet {
     float yaw = 0, pitch = 0, distance = 200;
     boolean camLight = true;
     float mouseWheelDelta = 0;
+
+    Locale[] supportedLanguages = {
+            new Locale("de", "DE"),
+            new Locale("en", "GB"),
+    };
 
     @Override
     public void setup() {
@@ -79,6 +90,9 @@ public class SimularthurGUI extends PApplet {
         //println(world.getEntities().length);
 
         simSpeed = simSpeed;
+
+        ResourceBundle rb = ResourceBundle.getBundle("in.freye.physics.il.Strings", supportedLanguages[0]);
+        println(rb.getString("test"));
     }
 
     @Override
@@ -100,7 +114,7 @@ public class SimularthurGUI extends PApplet {
         fill(0, 200, 0);
         text(String.format("%.2f; %.2f; %.2f", world.getEntities()[0].pos.getX(), world.getEntities()[0].pos.getY(), world.getEntities()[0].pos.getZ()), 10, 20);
         text(String.format("%.2f; %.2f; %.2f", world.getEntities()[0].vel.getX(), world.getEntities()[0].vel.getY(), world.getEntities()[0].vel.getZ()), 10, 40);
-        text(String.format("%.2f; %.2f; %.2f", world.getEntities()[0].acc.getX(), world.getEntities()[0].acc.getY(), world.getEntities()[0].acc.getZ()), 10, 60);
+        text(String.format("%.2f; %.2f; %.2f", world.getEntities()[0].selfAcc.getX(), world.getEntities()[0].selfAcc.getY(), world.getEntities()[0].selfAcc.getZ()), 10, 60);
         hint(ENABLE_DEPTH_TEST);
 //println(world.getEntities()[0].vel);
         // based on mouse pos

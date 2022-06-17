@@ -8,6 +8,12 @@ wie könnte ein monitoring fall aussehen, der den algorithmus beobachtet?
 DOK:
 -anmerken (in DOK(?)), dass Vector3D immutabel ist
 -Anzahl Objekte * Genauigkeitsversprechen ~ Rechenintensität
+-Näherungen
+    -Punktmassen
+    -keine Rotation
+    -keine Reibung oder andere thermischen Verluste
+        todo evtl. Haft-/Gleitreibung?
+    -Gravitation durch andere Körper hat konstante Beschleunigung in einem timeStep
 
 -use randompos for slightly offset batch spawn
 	V3 p = world.randomPos(world.getSize().getX()/1.9).add(new V3(0,0.3,0));
@@ -26,7 +32,8 @@ Externe Beschl. (Gravitation) wirken natürlich weiter"
 Quellen:
 https://www.leifiphysik.de/mechanik/impulserhaltung-und-stoesse/grundwissen/zentraler-elastischer-stoss
 https://en.wikipedia.org/wiki/Physics_engine
-(if cuboids w/ AABB) https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
+(if cuboids w/ AABB)
+    https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
 
 
 

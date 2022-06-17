@@ -8,9 +8,23 @@ import java.util.Arrays;
 import java.util.function.BiFunction;
 
 public class World implements Physicable {
+
+    /** Minimale Aktualisierungen pro Sekunde */
     private final double updateFreq;
+    /** size: Größe des Raums; gravity: Vektor der Beschleunigung eines homogenen Gravitationsfelds (wie z.B. auf der Erde) */
     private final Vector3D size, gravity;
+    /** Liste aller Körper im Raum */
     private final ImmutableList<Shape> entities;
+
+    /** Allgemeine Gravitationskonstante G */
+    static final double GRAVITY_CONSTANT = 6.674e-11;
+    /**
+     * Masse, ab der ein Körper andere Objekte stark genug anzieht, damit es signifikant für die Berechnung wird.
+     * Signifikant := Andere Körper im Abstand = 1 m werden mit mind. 0,001 m/s² beschleunigt.
+     * Nach F=G*(m1*m2)/r² (mit F=m2*a und r=1m) folgt m1=a/G*r²
+     *  = (0,001m/s²)/(6,674e-11Nm²/kg²)*(1m²) = 14.983.518,13 kg ≈ 1,5e7 kg
+     */
+    private static final double GRAVITY_SIGNIFICANT_MASS = 1.5e7;
 
     /**
      * Erstellt eine neue Welt für physikalische Simulation
@@ -89,14 +103,22 @@ public class World implements Physicable {
     /** Wendet physikalische Berechnungen auf jeden Körper an */
     private ImmutableList<Shape> simulateChanges(double dt) {
         // todo check if parallel map ops change order in stream or returned list -> seems not to be the case
+        // Filtern aller Körper, deren Masse eine signifikante Gravitation ausübt
+        ImmutableList<Shape> gravityShapes = entities
+                .select(e1 -> e1.mass >= GRAVITY_SIGNIFICANT_MASS);
+        // Berechnung der Gesamtbeschleunigung, die jeder Körper zum neuen Zeitpunkt hat
+        ImmutableList<Shape> result1 = Lists.immutable.fromStream(entities.stream().parallel()
+                .map(e -> e.calcAcceleration(gravity, gravityShapes))
         // Aktualisieren der Position und Geschwindigkeit durch allgemeine Gravitation oder gleichförmige Bewegung
-        ImmutableList<Shape> state1 = Lists.immutable.fromStream(entities.stream().parallel().map(e -> e.applyMovement(dt, gravity)));
-        // todo Gravitation durch andere Objekte (braucht die Liste der Körper im aktuellen Zustand)
-
+                .map(e -> e.applyMovement(dt)));
         // Kollisionen mit den Wänden
-        ImmutableList<Shape> state2 = Lists.immutable.fromStream(state1.stream().parallel().map(e -> e.handleWallCollision(size)));
-        // Nach Bewegungsupdate kann Kollision zwischen Körpern getestet werden
-        return Lists.immutable.fromStream(state2.stream().parallel().map(e -> e.handleEntityCollision(state2)));
+        ImmutableList<Shape> result2 = Lists.immutable.fromStream(result1.stream().parallel()
+                .map(e -> e.handleWallCollision(size, result1.select(e1 -> e1.id == e.id).get(0))));
+        // Kollision zwischen Körpern
+        //todo pass res1.e or res2.e for vel bugfix? -> res2 prev is already in list, if i use this i dont need another arg
+        // i think res2 is fine, since only posDiff is used to calc correction
+        return Lists.immutable.fromStream(result2.stream().parallel()
+                .map(e -> e.handleEntityCollision(result2)));
     }
 
 

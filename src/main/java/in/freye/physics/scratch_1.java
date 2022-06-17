@@ -1,8 +1,11 @@
 package in.freye.physics;
 
 import in.freye.physics.al.Physicable;
+import in.freye.physics.al.Shape;
 import in.freye.physics.al.World;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
 
 class Scratch {
     public static void main(String[] args) {
@@ -27,5 +30,6 @@ class Scratch {
         //System.out.println(world.getEntities()[0].pos);
         System.out.println(world.getEntities()[0].id);
         System.out.println(world2.getEntities()[0].id);
+        //System.out.println(Lists.immutable.of(world.getEntities()).select(e -> e.id == 0).get(0).pos);
     }
 }
