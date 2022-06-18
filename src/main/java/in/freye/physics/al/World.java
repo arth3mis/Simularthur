@@ -6,6 +6,7 @@ import org.eclipse.collections.api.list.ImmutableList;
 
 import java.util.Arrays;
 import java.util.function.BiFunction;
+import java.util.stream.DoubleStream;
 
 public class World implements Physicable {
 
@@ -37,8 +38,8 @@ public class World implements Physicable {
     }
 
     private World(double updateFrequency, Vector3D size, Vector3D gravity, ImmutableList<Shape> entities) {
-        assert isValidVector(size) && isValidVector(gravity) && entities != null : "Die Werte müssen eine Initialisierung haben";
-        assert Arrays.stream(size.toArray()).allMatch(d -> d > 0) : "Der Raum muss ein realer Quader sein";
+        assert isValidVector(size) && isValidVector(gravity) && entities != null : "Die Werte müssen initialisiert sein";
+        assert DoubleStream.of(size.toArray()).allMatch(d -> d > 0) : "Der Raum muss ein realer Quader sein";
         this.updateFreq = updateFrequency;
         this.size = size;
         this.gravity = gravity;
@@ -108,17 +109,18 @@ public class World implements Physicable {
                 .select(e1 -> e1.mass >= GRAVITY_SIGNIFICANT_MASS);
         // Berechnung der Gesamtbeschleunigung, die jeder Körper zum neuen Zeitpunkt hat
         ImmutableList<Shape> result1 = Lists.immutable.fromStream(entities.stream().parallel()
-                .map(e -> e.calcAcceleration(gravity, gravityShapes))
+                .map(e -> e.calcAcceleration(gravity, gravityShapes)));
         // Aktualisieren der Position und Geschwindigkeit durch allgemeine Gravitation oder gleichförmige Bewegung
-                .map(e -> e.applyMovement(dt)));
-        // Kollisionen mit den Wänden
         ImmutableList<Shape> result2 = Lists.immutable.fromStream(result1.stream().parallel()
-                .map(e -> e.handleWallCollision(size, result1.select(e1 -> e1.id == e.id).get(0))));
+                .map(e -> e.applyMovement(dt)));
+        // Kollisionen mit den Wänden (benötigt Zustand vor aktualisierter Position/Geschwindigkeit)
+        ImmutableList<Shape> result3 = Lists.immutable.fromStream(result2.stream().parallel()
+                .map(e -> e.handleWallCollision(size, result1.select(e1 -> e1.equals(e)).get(0))));
         // Kollision zwischen Körpern
         //todo pass res1.e or res2.e for vel bugfix? -> res2 prev is already in list, if i use this i dont need another arg
         // i think res2 is fine, since only posDiff is used to calc correction
-        return Lists.immutable.fromStream(result2.stream().parallel()
-                .map(e -> e.handleEntityCollision(result2)));
+        return Lists.immutable.fromStream(result3.stream().parallel()
+                .map(e -> e.handleEntityCollision(result3)));
     }
 
 
@@ -144,12 +146,12 @@ public class World implements Physicable {
 
     /** Testet den Vektor, dass er nicht null ist und keine NaN/Infinity-Werte enthält */
     static boolean isValidVector(Vector3D v) {
-        return v != null && Arrays.stream(v.toArray()).allMatch(Double::isFinite);
+        return v != null && DoubleStream.of(v.toArray()).allMatch(Double::isFinite);
     }
 
     /** Testet jede Komponente des ersten Vektors gegen die des zweiten */
     static boolean compareComponents(Vector3D v, Vector3D w, BiFunction<Double, Double, Boolean> bf) {
-        assert v != null && w != null : "Zum komponentenweisen Testen muss der andere Vektor existieren";
+        assert v != null && w != null : "Zum komponentenweisen Testen darf kein Vektor null sein";
         return bf.apply(v.getX(), w.getX()) && bf.apply(v.getY(), w.getY()) && bf.apply(v.getZ(), w.getZ());
     }
 }

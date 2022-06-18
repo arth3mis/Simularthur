@@ -28,8 +28,8 @@ public abstract class Shape {
      * damit nur Manipulationen desselben Objekts dieselbe ID haben, keine neuen Körper
      */
     Shape(long id, ShapeType type, Vector3D pos, Vector3D vel, Vector3D acc, Vector3D selfAcc, boolean movable, double mass, double density, double bounciness) {
-        assert World.isValidVector(pos) && World.isValidVector(vel) && World.isValidVector(selfAcc) : "Die Position & Bewegung des Körpers muss definiert sein";
-        assert density > 0 && mass > 0 : "Dichte & Masse eines Körpers müssen positiv sein";
+        assert World.isValidVector(pos) && World.isValidVector(vel) && World.isValidVector(acc) && World.isValidVector(selfAcc) : "Die Position & Bewegung des Körpers muss reell definiert sein";
+        assert density > 0 && mass > 0 && Double.isFinite(density) && Double.isFinite(mass) : "Dichte & Masse eines Körpers müssen endlich positiv sein";
         assert bounciness >= 0 && bounciness <= 1 : "Die Reflexionsstärke muss zwischen 0 und 1 liegen, damit die Energieerhaltung nicht verletzt wird";
         // Wenn es ein neuer Körper ist, weise eine neue ID zu; ansonsten kopiere die bisherige ID
         this.id = id == NO_ID ? idCounter++ : id;
@@ -58,7 +58,9 @@ public abstract class Shape {
      */
     abstract Shape applyMovement(double dt);
     /**
-     * Erkennt Kollisionen mit den Wänden des Raums, berechnet Korrekturen und Reflexion
+     * Erkennt Kollisionen mit den Wänden des Raums, berechnet Korrekturen und Reflexion.
+     * Wird auch für nicht bewegliche Objekte ausgeführt,
+     * um einmalige Positionskorrektur unter Verwendung des Radius auszuführen.
      * @param worldSize Raumgröße
      * @param prev Zustand vor Bewegungsupdate (benötigt für Korrekturen)
      */

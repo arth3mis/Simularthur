@@ -7,6 +7,7 @@ import processing.event.MouseEvent;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.stream.DoubleStream;
 
 public class SimularthurGUI extends PApplet {
 
@@ -47,17 +48,16 @@ public class SimularthurGUI extends PApplet {
     }
 
     void reset() {
-        world = World.create(60, new Vector3D(1, 1, 1));//.setGravity(new Vector3D(0, -9.81, 0));
+        world = World.create(60, new Vector3D(1, 1, 1)).setGravity(new Vector3D(0, -9.81, 0));
         scale = 100;
 //        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
 //                .limit(10)
 //                .reduce(world, (a, b) -> b);
 
-        // Gravitations-Bouncing & gute Visualisierung des Genauigkeitsversprechens
-        // todo & vel "perpetuum mobile" bug
-//        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
-//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, 1)))
-//                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+        // Gravitations-Bouncing
+        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
+                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, .99)))
+                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
 //        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
 //                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
 //                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
@@ -77,13 +77,13 @@ public class SimularthurGUI extends PApplet {
 //                        .newSphere(0.05,1, 1)
 //        );
 
-        // Überlappende Körper + Reaktion todo maybe make them not spread more than they should
-        world = world.spawn(
-                world.at(new Vector3D(0.5, 0.501, 0.4))
-                        .newSphere(0.05,1, 1),
-                world.at(new Vector3D(0.5, 0.5, 0.4))
-                        .newSphere(0.05,1, 1)
-        );
+        // Überlappende Körper + Reaktion
+//        world = world.spawn(
+//                world.at(new Vector3D(0.5, 0.501, 0.4))
+//                        .newSphere(0.05,1,1)
+//                world.at(new Vector3D(0.5, 0.5, 0.4))
+//                        .newSphere(0.05,1,1)
+//        );
         for (int i = 0; i < 8; i++) {
             //world = world.spawn(world.getEntities()[1]);
         }

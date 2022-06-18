@@ -4,7 +4,7 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
 public class ShapeBuilder extends ShapeBuilderBase {
 
-    public ShapeBuilder(Vector3D pos) {
+    ShapeBuilder(Vector3D pos) {
         this.pos = pos;
     }
 
