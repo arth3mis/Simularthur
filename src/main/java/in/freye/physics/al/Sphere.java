@@ -64,8 +64,6 @@ public class Sphere extends Shape {
 
     Shape handleEntityCollision(ImmutableList<Shape> entities) {
         if (!movable) return this;
-        // Berechnung abhängig vom Typ des anderen Körpers
-        //
         // Kollision mit anderen Kugeln (Stream nicht parallel, da es fast immer nur eine Kollision gibt)
         return entities.stream()
             // Typ-Filter und Sicherheitstests
@@ -73,19 +71,22 @@ public class Sphere extends Shape {
             // Kollisionsdetektion: Abstand der Mittelpunkte < Summe der Radii
             .filter(e -> pos.distance(e.pos) < radius + e.radius)
             // Auswirkungen der Kollisionen auf "this" anwenden
-            .reduce(this, (a, b) -> new Sphere(id,
-                a.pos.add(a.pos.subtract(b.pos)
-                        .normalize()
-                        .scalarMultiply(a.radius + b.radius - a.pos.distance(b.pos))
-                        // Korrigiert die Hälfte des Abstands, andere Kugel "übernimmt" die andere Hälfte (nur wenn andere auch movable ist)
-                        .scalarMultiply(b.movable ? 0.5 : 1)),
-                // Geschwindigkeit wird über Impulserhaltung und Energieerhaltung berechnet (siehe Quelle "Leifi-Physik"):
-                // newVel = (a.mass * a.vel + b.mass * (2 * b.vel - a.vel)) / (a.mass + b.mass) * bounciness
-                // todo hier ist noch keine richtung drin oder?? richtung mit a.pos.subtract(b.pos) bestimmen
-                // todo auch hier fix vel bug (see todo in wallColl)
-                a.vel.scalarMultiply(a.mass).add(b.mass, b.vel.scalarMultiply(2).subtract(a.vel)).scalarMultiply(bounciness / (a.mass + b.mass)),
-                // orthogonale Zerlegung von selfAcc: der Teil parallel zum Vektor (b.pos-a.pos) wird 0 (-> Hintergrund: siehe handleWallCollision)
-                a.acc, a.selfAcc,//a.selfAcc.subtract(b.pos.subtract(a.pos).scalarMultiply(a.selfAcc.dotProduct(b.pos.subtract(a.pos)) / b.pos.subtract(a.pos).getNormSq())),  // todo test and think through
-                a.movable, a.radius, a.density, a.bounciness));
+            .reduce(this, (a, b) -> {
+                Vector3D d = a.pos.subtract(b.pos);  // Zeigt auf dieses
+                return new Sphere(id,
+                    // Position: Korrigiert die Hälfte des Abstands, andere Kugel "übernimmt" die andere Hälfte (wenn sie auch movable ist)
+                    a.pos.add(d.normalize().scalarMultiply(a.radius + b.radius - d.getNorm()).scalarMultiply(b.movable ? 0.5 : 1)),
+                    // Geschwindigkeit wird über Impulserhaltung und Energieerhaltung berechnet (siehe Quelle "Leifi-Physik"):
+                    // Richtung von newVel ist die Richtung von (a.pos - b.pos) todo WRONG
+                    // todo hier ist noch keine richtung drin, UND Betrag ist falsch, wenn keine 0° coll
+                    //  (wenn sie nur leicht streifen, tauschen sie ihre vel nicht komplett)
+                    // todo auch hier fix vel bug (see todo in wallColl)
+                    d.normalize().scalarMultiply(
+                    // |newVel| = |(a.mass * a.vel + b.mass * (2 * b.vel - a.vel)) / (a.mass + b.mass) * bounciness|
+                            a.vel.scalarMultiply(a.mass).add(b.mass, b.vel.scalarMultiply(2).subtract(a.vel)).scalarMultiply(bounciness / (a.mass + b.mass)).getNorm()),
+                    // orthogonale Zerlegung von selfAcc: der Teil parallel zum Vektor (b.pos-a.pos) wird 0 (-> Hintergrund: siehe handleWallCollision)
+                    a.acc, a.selfAcc,//a.selfAcc.subtract(b.pos.subtract(a.pos).scalarMultiply(a.selfAcc.dotProduct(b.pos.subtract(a.pos)) / b.pos.subtract(a.pos).getNormSq())),  // todo test and think through
+                    a.movable, a.radius, a.density, a.bounciness);
+            });
     }
 }

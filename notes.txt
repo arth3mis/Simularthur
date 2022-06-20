@@ -6,6 +6,7 @@ wie könnte ein monitoring fall aussehen, der den algorithmus beobachtet?
 
 
 DOK:
+-mit anderen formen im Sinn strukturiert, Implementierung würde aber Rahmen sprengen
 -anmerken (in DOK(?)), dass Vector3D immutabel ist
 -Anzahl Objekte * Genauigkeitsversprechen ~ Rechenintensität
 -Näherungen
@@ -18,7 +19,19 @@ DOK:
 -use randompos for slightly offset batch spawn
 	V3 p = world.randomPos(world.getSize().getX()/1.9).add(new V3(0,0.3,0));
 
-
+VAL:
+5 Tests AL-Interface
+-worldGravity
+-entityGravity (?Kreisbahn mit perfekter Umrundung auf Ankunftsort nach 2pi testen)
+-wallCollision (testet auch Bew. mit konstanter vel)
+-entityCollision (mit Impulserhaltung)
+-????reibung
+5 Tests AL-Klassen
+-einzelne Shape methods testen
+-????Immutabilitätstest
+Logging (toggleable)
+- World::simulateChanges "updating world (timeStep = __s)"
+- spheres: name logs after (type &) id (and make individual output files, if making file output?)
 
 
 Eigenbeschleunigung: Damit lässt sich Zeug simulieren. Enthält keine
@@ -31,6 +44,9 @@ Externe Beschl. (Gravitation) wirken natürlich weiter"
 
 Quellen:
 https://www.leifiphysik.de/mechanik/impulserhaltung-und-stoesse/grundwissen/zentraler-elastischer-stoss
+(entity collision deflection angle)
+    https://en.wikipedia.org/wiki/Elastic_collision
+    (not needed?) https://stackoverflow.com/a/3255204
 https://en.wikipedia.org/wiki/Physics_engine
 (if cuboids w/ AABB)
     https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection

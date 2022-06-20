@@ -55,9 +55,9 @@ public class SimularthurGUI extends PApplet {
 //                .reduce(world, (a, b) -> b);
 
         // Gravitations-Bouncing
-        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
-                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, .99)))
-                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+//        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
+//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, .99)))
+//                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
 //        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
 //                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
 //                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
@@ -67,15 +67,15 @@ public class SimularthurGUI extends PApplet {
 //                .withVelocityAndAccel(new Vector3D(0,0,0), new Vector3D(0,0,0))
 //                .newSphere(0.05, 1, 1));
 
-        // Impulserhaltung
-//        world = world.spawn(
-//                world.at(new Vector3D(0.8, 0.5, 0.4))
-//                        .withVelocityAndAccel(new Vector3D(-0.1,0,0), Vector3D.ZERO)
-//                        .newSphere(0.05,1, 1),
-//                world.at(new Vector3D(0.2, 0.5, 0.4))
-//                        .withVelocityAndAccel(new Vector3D(0.5,0,0), Vector3D.ZERO)
-//                        .newSphere(0.05,1, 1)
-//        );
+        // Impulserhaltung ("conservation of momentum")
+        world = world.spawn(
+                world.at(new Vector3D(0.8, 0.5, 0.4))
+                        .withVelocityAndAccel(new Vector3D(-0.1,0,0), Vector3D.ZERO)
+                        .newSphere(0.05,1, 1),
+                world.at(new Vector3D(0.2, 0.5, 0.4))
+                        .withVelocityAndAccel(new Vector3D(0.5,0,0), Vector3D.ZERO)
+                        .newSphere(0.05,1, 1)
+        );
 
         // Überlappende Körper + Reaktion
 //        world = world.spawn(
