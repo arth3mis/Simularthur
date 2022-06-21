@@ -66,13 +66,21 @@ public abstract class Shape {
      */
     abstract Shape handleWallCollision(Vector3D worldSize, Shape prev);
     /**
-     * Erkennt Kollisionen mit anderen Körpern, berechnet Korrekturen und Reflexion
-     * @param entities alle Körper im Raum
+     * Berechnet die exakten Kollisionszeiten, korrigiert Position und Geschwindigkeit
+     * //@param entities alle Körper im Raum
+     * @param prev Zustand vor Bewegungsupdate
      */
-    abstract Shape handleEntityCollision(ImmutableList<Shape> entities);
+    abstract Shape calcEntityCollisionCorrections(/*ImmutableList<Shape> detectEntities, */ImmutableList<Shape> correctionEntities, Shape prev);
+    /**
+     * Berechnet die neue Geschwindigkeit nach Kollisionen, basierend auf Impuls- und Energieerhaltung
+     * @param detectEntities Körper im Raum (vor Korrektur)
+     * @param deflectionEntities Körper im Raum (nach Korrektur)
+     */
+    abstract Shape applyEntityCollisionDeflections(ImmutableList<Shape> detectEntities, ImmutableList<Shape> deflectionEntities/*, Shape prev*/);
 
     //abstract Shape copy();
 
+    /** Derselbe Körper kann zu unterschiedlichen Zeitpunkten existieren, deshalb ist er nur mit einer ID eindeutig identifizierbar */
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (!(obj instanceof Shape that)) return false;  // hier wird implizit auch "obj == null" überprüft

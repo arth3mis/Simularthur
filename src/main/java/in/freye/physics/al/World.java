@@ -4,7 +4,6 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 
-import java.util.Arrays;
 import java.util.function.BiFunction;
 import java.util.stream.DoubleStream;
 
@@ -108,19 +107,22 @@ public class World implements Physicable {
         ImmutableList<Shape> gravityShapes = entities
                 .select(e1 -> e1.mass >= GRAVITY_SIGNIFICANT_MASS);
         // Berechnung der Gesamtbeschleunigung, die jeder Körper zum neuen Zeitpunkt hat
-        ImmutableList<Shape> result1 = Lists.immutable.fromStream(entities.stream().parallel()
+        ImmutableList<Shape> result1 = Lists.immutable.fromStream(entities.parallelStream()
                 .map(e -> e.calcAcceleration(gravity, gravityShapes)));
         // Aktualisieren der Position und Geschwindigkeit durch allgemeine Gravitation oder gleichförmige Bewegung
-        ImmutableList<Shape> result2 = Lists.immutable.fromStream(result1.stream().parallel()
+        ImmutableList<Shape> result2 = Lists.immutable.fromStream(result1.parallelStream()
                 .map(e -> e.applyMovement(dt)));
         // Kollisionen mit den Wänden (benötigt Zustand vor aktualisierter Position/Geschwindigkeit)
-        ImmutableList<Shape> result3 = Lists.immutable.fromStream(result2.stream().parallel()
-                .map(e -> e.handleWallCollision(size, result1.select(e1 -> e1.equals(e)).get(0))));
-        // Kollision zwischen Körpern
-        //todo pass res1.e or res2.e for vel bugfix? -> res2 prev is already in list, if i use this i dont need another arg
-        // i think res2 is fine, since only posDiff is used to calc correction
-        return Lists.immutable.fromStream(result3.stream().parallel()
-                .map(e -> e.handleEntityCollision(result3)));
+        ImmutableList<Shape> result3 = Lists.immutable.fromStream(result2.parallelStream()
+                .map(e -> e.handleWallCollision(size, result1.select(e1 -> e1.equals(e)).getAny())));
+        // Kollision zwischen Körpern (Korrektur Position/Geschwindigkeit)
+        // todo check params and logic
+        ImmutableList<Shape> result4 = Lists.immutable.fromStream(result3.parallelStream()
+                .map(e -> e.calcEntityCollisionCorrections(result3, result1.select(e1 -> e1.equals(e)).getAny())));
+        // Kollision zwischen Körpern (Kollisionsantwort mit Impulserhaltung, Energieerhaltung)
+        ImmutableList<Shape> result5 = Lists.immutable.fromStream(result4.parallelStream()
+                .map(e -> e.applyEntityCollisionDeflections(result3, result4)));
+        return result5;
     }
 
 
