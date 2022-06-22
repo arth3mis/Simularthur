@@ -42,6 +42,8 @@ public class Sphere extends Shape {
         // Jede Komponente einzeln auf Kollision testen
         for (int i = 0; i < 3; i++) {
             if (pos.toArray()[i] < radius || pos.toArray()[i] + radius > worldSize.toArray()[i]) {
+                if (id == 1 && i == 1 && pos.getY() > 0.5)
+                    System.out.print("");
                 // Position korrigieren, falls außerhalb des Bereichs
                 double pColl = pos.toArray()[i] < radius ? radius : worldSize.toArray()[i] - radius;
                 p = new Vector3D(i==0 ? pColl : p.getX(), i==1 ? pColl : p.getY(), i==2 ? pColl : p.getZ());
@@ -49,7 +51,8 @@ public class Sphere extends Shape {
                 // Mithilfe des "prev" Zustands kann die tatsächliche Kollisionszeit berechnet werden (Umstellung mit PQ-Formel).
                 // pColl = 0.5*a*tColl² + v*tColl + p  (p,v,a sind Werte von prev)
                 // (PQ-Formel) => tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
-                double tColl = -(prev.vel.toArray()[i] / prev.acc.toArray()[i]) + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) - 2 * (prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
+                double tColl = prev.acc.toArray()[i] == 0 ? 0 : -(prev.vel.toArray()[i] / prev.acc.toArray()[i]) + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) - 2 * (prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
+                // todo PROBLEM: if v+at changes +/-, "* -bounciness" changes it back
                 double v1 = prev.vel.add(tColl, prev.acc).toArray()[i] * -bounciness;
                 // Schwelle, um Zittern zu vermeiden todo keep or remove?
                 if (Math.abs(v1) < 0.00001) v1 = 0;
@@ -68,31 +71,32 @@ public class Sphere extends Shape {
         if (!movable) return this;
         // Kollision mit anderen Kugeln (Stream nicht parallel, da es fast immer nur eine Kollision gibt)
         return getCollidingSpheres(this, entities)
-            // Auswirkungen der Kollisionen auf "this" anwenden
-            .reduce(this, (a, b) -> {
-                // todo check with new method structure
-                Vector3D d = a.pos.subtract(b.pos);  // Zeigt in Richtung von "this"
-                // Korrekte Position bei Kollision: Korrigiert die Hälfte des Abstands, andere Kugel "übernimmt" die andere Hälfte (wenn sie auch movable ist)
-                Vector3D pColl = a.pos.add(d.normalize().scalarMultiply(a.radius + b.radius - d.getNorm()).scalarMultiply(b.movable ? 0.5 : 1));
-                // tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
-                double tColl = -(prev.vel.getNorm()/prev.acc.getNorm()) + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
-                return new Sphere(id, pColl,
-                    prev.vel.add(tColl, prev.acc),
-                    // orthogonale Zerlegung von selfAcc: der Teil parallel zum Vektor (b.pos-a.pos) wird 0 (-> Hintergrund: siehe handleWallCollision)
-                    a.acc, a.selfAcc,//a.selfAcc.subtract(b.pos.subtract(a.pos).scalarMultiply(a.selfAcc.dotProduct(b.pos.subtract(a.pos)) / b.pos.subtract(a.pos).getNormSq())),  // todo test and think through
-                    a.movable, a.radius, a.density, a.bounciness);
-            });
+                // Auswirkungen der Kollisionen auf "this" anwenden
+                .reduce(this, (a, b) -> {
+                    // Position bei Kollision: Korrigiert die Hälfte des Abstands, andere Kugel "übernimmt" die andere Hälfte (wenn sie auch movable ist)
+                    Vector3D pColl = a.pos.add(a.pos.subtract(b.pos).normalize().scalarMultiply(a.radius + b.radius - a.pos.subtract(b.pos).getNorm()).scalarMultiply(b.movable ? 0.5 : 1));
+                    //System.out.println(a.pos.subtract(pColl));// todo debug
+                    // tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
+                    double tColl = -(prev.vel.getNorm()/prev.acc.getNorm()) + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
+                    // tColl ist NaN bei konstanter Geschwindigkeit, dann muss diese nicht korrigiert werden
+                    return new Sphere(id, pColl, Double.isNaN(tColl) ? vel : prev.vel.add(tColl, prev.acc), a.acc, a.selfAcc, a.movable, a.radius, a.density, a.bounciness);
+                });
     }
 
-    Shape applyEntityCollisionDeflections(ImmutableList<Shape> deflectionEntities, ImmutableList<Shape> detectEntities/*, Shape prev*/) {
+    Shape applyEntityCollisionDeflections(ImmutableList<Shape> detectEntities, ImmutableList<Shape> deflectionEntities/*, Shape prev*/) {
         if (!movable) return this;
-        return getCollidingSpheres(this, detectEntities).map(e -> (Sphere) deflectionEntities.select(e::equals).getAny())
-                // Geschwindigkeit nach Kollision:
-                // v1' = v1 - 2*m2/(m1+m2) * todo insert formula
-                .reduce(this, (a, b) -> {
-                    Vector3D d = b.pos.subtract(a.pos);
-                    return new Sphere(id, a.pos, a.vel.add(2*b.mass/(a.mass+b.mass) * b.vel.subtract(a.vel).dotProduct(d) / d.getNormSq(), d), a.acc, a.selfAcc, a.movable, a.radius, a.density, a.bounciness);
-                });
+        // Führt erneut die Kollisionsdetektion mit vorherigen Zuständen aus
+        // (benötigt weniger Rechenaufwand als mehrfache Korrekturberechnungen, daher wurden diese in eigene Funktion ausgelagert)
+        return getCollidingSpheres((Sphere) detectEntities.select(this::equals).getAny(), detectEntities)
+                .map(e -> (Sphere) deflectionEntities.select(e::equals).getAny())
+                // todo orthogonale Zerlegung von selfAcc: der Teil parallel zum Vektor (b.pos-a.pos) wird 0 (-> Hintergrund: siehe handleWallCollision)
+                //  test and think through:
+                //  a.selfAcc.subtract(b.pos.subtract(a.pos).scalarMultiply(a.selfAcc.dotProduct(b.pos.subtract(a.pos)) / b.pos.subtract(a.pos).getNormSq())),
+                .reduce(this, (a, b) -> new Sphere(id, a.pos,
+                        // Geschwindigkeit nach Kollision:
+                        // v1' = (v1 + 2*m2/(m1+m2) * dot(v2-v1, p1-p2) / |p1-p2| * (p1-p2)) * bounciness
+                        a.vel.add(2*b.mass/(a.mass+b.mass) * b.vel.subtract(a.vel).dotProduct(a.pos.subtract(b.pos)) / a.pos.subtract(b.pos).getNormSq(), a.pos.subtract(b.pos)).scalarMultiply(bounciness),
+                        a.acc, a.selfAcc, a.movable, a.radius, a.density, a.bounciness));
     }
 
     /**
@@ -102,6 +106,8 @@ public class Sphere extends Shape {
      * @return Stream der getroffenen Kugeln (nicht parallel, da es meistens nur eine Kollision gibt)
      */
     private static Stream<Sphere> getCollidingSpheres(Sphere s, ImmutableList<Shape> entities) {
-        return entities.stream().filter(e -> e.type == ShapeType.SPHERE && !e.equals(s) && !s.pos.equals(e.pos)).map(e -> (Sphere) e).filter(e -> s.pos.distance(e.pos) < s.radius + e.radius);
+        return entities.stream().filter(e -> e.type == ShapeType.SPHERE && !e.equals(s) && !s.pos.equals(e.pos))
+                // Toleranz (1 Nanometer), damit z.B. keine Kollision bei direkt aneinander liegenden Kugeln erkannt wird
+                .map(e -> (Sphere) e).filter(e -> s.pos.distance(e.pos) + 1.0e-9 < s.radius + e.radius);
     }
 }

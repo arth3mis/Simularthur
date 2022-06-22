@@ -5,8 +5,9 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import processing.core.PApplet;
 import processing.event.MouseEvent;
 
-import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.DoubleStream;
 
@@ -19,81 +20,103 @@ public class SimularthurGUI extends PApplet {
                 break;
             } catch (Exception e) {
                 e.printStackTrace();
+                // todo debug
+                return;
             }
         }
     }
 
     @Override
     public void settings() {
-        //fullScreen();
+        // setup string resources
+        for (Locale loc : SUPPORTED_LANGUAGES) {
+            STRINGS.put(loc, ResourceBundle.getBundle(STRINGS_PATH, loc));
+        }
+        lang = SUPPORTED_LANGUAGES[0];
+
         size(800, 700, P3D);
         smooth(8);
     }
 
+    // simulation variables
     Physicable world;
     float scale = 1;
     double simSpeed = 0;
 
-    float yaw = 0, pitch = 0, distance = 200;
+    // simulation display
+    float yaw = 0, pitch = PI, distance = 200;
     boolean camLight = true;
     float mouseWheelDelta = 0;
 
-    Locale[] supportedLanguages = {
+    // resources
+    // todo work with SVG files, loadShape("x.svg"), shapeMode(CORNER/CENTER/CORNERS), shape(s, 0,0, 10,15)...
+    final String STRINGS_PATH = "in.freye.physics.il.Strings";
+    final Locale[] SUPPORTED_LANGUAGES = {
             new Locale("de", "DE"),
             new Locale("en", "GB"),
     };
+    final Map<Locale, ResourceBundle> STRINGS = new HashMap<>();
+    Locale lang;
+    private String stringRes(String key) {
+        if (STRINGS.containsKey(lang))
+            return STRINGS.get(lang).getString(key);
+        return "";
+    }
 
     @Override
     public void setup() {
+        windowTitle(stringRes("windowTitle"));
         reset();
     }
 
     void reset() {
-        world = World.create(60, new Vector3D(1, 1, 1)).setGravity(new Vector3D(0, -9.81, 0));
+        world = World.create(1000, new Vector3D(1, 1, 1)).setGravity(new Vector3D(0, -9.81, 0));
         scale = 100;
 //        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
 //                .limit(10)
 //                .reduce(world, (a, b) -> b);
 
+        // Einzelner Ball
+//        world = world.spawn(world.at(new Vector3D(0.4, 0.7, 0.4))
+//                .withVelocityAndAccel(new Vector3D(0,0,0), new Vector3D(0,0,0))
+//                .newSphere(0.05, 1, 1));
+
         // Gravitations-Bouncing
 //        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
-//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, .99)))
+//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, 1)))
 //                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
 //        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
 //                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
 //                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
 
-
-//        world = world.spawn(world.at(new Vector3D(0.4, 0.7, 0.4))
-//                .withVelocityAndAccel(new Vector3D(0,0,0), new Vector3D(0,0,0))
-//                .newSphere(0.05, 1, 1));
-
-        // Impulserhaltung ("conservation of momentum")
-        world = world.spawn(
-                world.at(new Vector3D(0.8, 0.5, 0.4))
-                        .withVelocityAndAccel(new Vector3D(-0.1,0,0), Vector3D.ZERO)
-                        .newSphere(0.05,1, 1),
-                world.at(new Vector3D(0.2, 0.5, 0.4))
-                        .withVelocityAndAccel(new Vector3D(0.5,0,0), Vector3D.ZERO)
-                        .newSphere(0.05,1, 1)
-        );
+        // Einzel-Kollision + Impulserhaltung ("conservation of momentum")
+//        world = world.spawn(
+//                world.at(new Vector3D(0.8, 0.5, 0.4))
+//                        .withVelocityAndAccel(new Vector3D(-0.5,0,0), Vector3D.ZERO)
+//                        .newSphere(0.05,1, 1),
+//                world.at(new Vector3D(0.2, 0.45, 0.4))
+//                        .withVelocityAndAccel(new Vector3D(0.5,0,0), Vector3D.ZERO)
+//                        .newSphere(0.05,1, 1)
+//        );
 
         // Überlappende Körper + Reaktion
 //        world = world.spawn(
 //                world.at(new Vector3D(0.5, 0.501, 0.4))
-//                        .newSphere(0.05,1,1)
+//                        .newSphere(0.05,1,1),
 //                world.at(new Vector3D(0.5, 0.5, 0.4))
 //                        .newSphere(0.05,1,1)
 //        );
-        for (int i = 0; i < 8; i++) {
-            //world = world.spawn(world.getEntities()[1]);
-        }
-        //println(world.getEntities().length);
+
+        // Newton-"Pendel" (Gute Demonstration von Genauigkeitsversprechen
+        world = world.spawn(world.at(new Vector3D(0.9,0.5,0.8))
+                .withVelocityAndAccel(new Vector3D(-1,0,0), Vector3D.ZERO)
+                .newSphere(0.05, 1, 1));
+        world = DoubleStream.iterate(0.4, d -> d < 0.7, d -> d + 0.1)
+                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5, 0.8)).newSphere(0.05, 1, 1)))
+                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+
 
         simSpeed = simSpeed;
-
-        ResourceBundle rb = ResourceBundle.getBundle("in.freye.physics.il.Strings", supportedLanguages[0]);
-        println(rb.getString("test"));
     }
 
     @Override
@@ -104,6 +127,7 @@ public class SimularthurGUI extends PApplet {
             rotateX(-yaw);
         }
         //lights();
+        // todo non camlight from back of pitch=0 std position
         ambientLight(128, 128, 128);
         directionalLight(128,128,128, 0,0,-1);
         if (camLight) popMatrix();
@@ -112,10 +136,13 @@ public class SimularthurGUI extends PApplet {
 
         camera();
         hint(DISABLE_DEPTH_TEST);
-        fill(0, 200, 0);
-        text(String.format("%.2f; %.2f; %.2f", world.getEntities()[0].pos.getX(), world.getEntities()[0].pos.getY(), world.getEntities()[0].pos.getZ()), 10, 20);
-        text(String.format("%.2f; %.2f; %.2f", world.getEntities()[0].vel.getX(), world.getEntities()[0].vel.getY(), world.getEntities()[0].vel.getZ()), 10, 40);
-        text(String.format("%.2f; %.2f; %.2f", world.getEntities()[0].selfAcc.getX(), world.getEntities()[0].selfAcc.getY(), world.getEntities()[0].selfAcc.getZ()), 10, 60);
+        int[] colors = {color(200,50,0),color(100,130,250),color(200,200,0),color(0,200,50),color(0,200,150),color(200,50,200)};
+        for (int i = 0; i < Math.min(world.getEntities().length, colors.length); i++) {
+            fill(colors[i]);
+            text(String.format("%.2f; %.2f; %.2f", world.getEntities()[i].pos.getX(), world.getEntities()[i].pos.getY(), world.getEntities()[i].pos.getZ()), 10, 70*i+20);
+            text(String.format("%.2f; %.2f; %.2f", world.getEntities()[i].vel.getX(), world.getEntities()[i].vel.getY(), world.getEntities()[i].vel.getZ()), 10, 70*i+40);
+            //text(String.format("%.2f; %.2f; %.2f", world.getEntities()[i].selfAcc.getX(), world.getEntities()[i].selfAcc.getY(), world.getEntities()[i].selfAcc.getZ()), 10, 80*i+60);
+        }
         hint(ENABLE_DEPTH_TEST);
 //println(world.getEntities()[0].vel);
         // based on mouse pos
@@ -150,7 +177,7 @@ public class SimularthurGUI extends PApplet {
                 pushMatrix();
                 translate((float) s.pos.getX() * scale, (float) s.pos.getY() * scale, (float) s.pos.getZ() * scale);
                 noStroke();
-                fill(0, 200-i*0, 0);
+                fill(i < colors.length ? colors[i] : color(200));
                 sphere((float) ((Sphere) s).radius * scale);
                 popMatrix();
                 i++;

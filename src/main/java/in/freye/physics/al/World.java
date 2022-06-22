@@ -29,7 +29,7 @@ public class World implements Physicable {
     /**
      * Erstellt eine neue Welt für physikalische Simulation
      * @param updateFrequency Anzahl, wie oft die Welt mindestens pro Sekunde aktualisiert wird
-     *                        (Genauigkeitsgarantie des Systems)
+     *                        (Genauigkeitsversprechen des Systems)
      * @param size Größe des Quaders, der die Welt darstellt
      */
     public static Physicable create(double updateFrequency, Vector3D size) {

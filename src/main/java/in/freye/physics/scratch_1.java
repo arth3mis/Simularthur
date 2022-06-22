@@ -1,14 +1,8 @@
 package in.freye.physics;
 
 import in.freye.physics.al.Physicable;
-import in.freye.physics.al.Shape;
-import in.freye.physics.al.V3;
 import in.freye.physics.al.World;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
-import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.list.ImmutableList;
-
-import static java.lang.Math.*;
 
 class Scratch {
     public static void main(String[] args) {
@@ -19,11 +13,13 @@ class Scratch {
         Physicable world = World.create(2, size);//.setGravity(grav);
 
         // density 238.732415 & radius 0.1 => m=1kg
-        world = world.spawn(world
-                .at(new Vector3D(0.5,0.49,0.5))
-                .withVelocityAndAccel(new Vector3D(-0.08,0,-0.08), Vector3D.ZERO)
-                .newSphere(0.1, 238.732415, 1))
-                .spawn(world.at(new Vector3D(0.7,0.7,0.7)).newSphere(0.2, 238.732415, 1));
+        world = world.spawn(
+                world.at(new Vector3D(0.5,0.49,0.5))
+                        .withVelocityAndAccel(new Vector3D(-0.08,0,-0.08), Vector3D.ZERO)
+                        .newSphere(0.1, 238.732415, 1),
+                world.at(new Vector3D(0.7,0.7,0.7))
+                        .newSphere(0.2, 238.732415, 1)
+        );
 
         //world = world.spawn(world.getEntities()[0]);
 

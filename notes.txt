@@ -6,6 +6,7 @@ wie könnte ein monitoring fall aussehen, der den algorithmus beobachtet?
 
 
 DOK:
+-Zu Immutability: Mehrere Java-Objekte vom Typ Shape können "derselbe Körper" sein (→ id, ...)
 -mit anderen formen im Sinn strukturiert, Implementierung würde aber Rahmen sprengen
 -anmerken (in DOK(?)), dass Vector3D immutabel ist
 -Anzahl Objekte * Genauigkeitsversprechen ~ Rechenintensität
@@ -13,7 +14,6 @@ DOK:
     -Punktmassen
     -keine Rotation
     -keine Reibung oder andere thermischen Verluste
-        todo evtl. Haft-/Gleitreibung?
     -Gravitation durch andere Körper hat konstante Beschleunigung in einem timeStep
     -Kollisionen werden nacheinander zwischen je 2 Körpern berechnet
 
@@ -44,13 +44,16 @@ Externe Beschl. (Gravitation) wirken natürlich weiter"
 
 
 Quellen:
-https://www.leifiphysik.de/mechanik/impulserhaltung-und-stoesse/grundwissen/zentraler-elastischer-stoss
+https://en.wikipedia.org/wiki/Physics_engine
 (entity collision deflection angle)
     https://en.wikipedia.org/wiki/Elastic_collision
     (not needed?) https://stackoverflow.com/a/3255204
-https://en.wikipedia.org/wiki/Physics_engine
 (if cuboids w/ AABB)
     https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
+(time-based simulation display)
+    https://www.isaacsukin.com/news/2015/01/detailed-explanation-javascript-game-loops-and-timing
+------------------ not used any longer (?) -----------------------------------------------------------------------------
+https://www.leifiphysik.de/mechanik/impulserhaltung-und-stoesse/grundwissen/zentraler-elastischer-stoss
 
 
 
@@ -74,10 +77,7 @@ IL
 AL
 -entitycoll: von acc bleibt nur noch acc_orthogonal_zu_posDiff
 
--acc rausnehmen????
-
--id rausmachen, wenn equals nicht wirklich gebraucht (lieber kein same-pos als feature erlauben)
--energieerhaltung? - ja, in kollisionsberechnung enthalten
+-selfAcc rausnehmen???? !
 
 -wenn update() kacke wird, mach Shape & sphere mutabel, arbeite mit copy und Getters
     entities copy: Lists.immutable.fromStream(entities.stream().map(Shape::copy))
