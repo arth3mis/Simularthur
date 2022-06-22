@@ -52,6 +52,8 @@ https://en.wikipedia.org/wiki/Physics_engine
     https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
 (time-based simulation display)
     https://www.isaacsukin.com/news/2015/01/detailed-explanation-javascript-game-loops-and-timing
+(für IL)
+    https://www.leifiphysik.de/mechanik/kreisbewegung/grundwissen/zentripetalkraft
 ------------------ not used any longer (?) -----------------------------------------------------------------------------
 https://www.leifiphysik.de/mechanik/impulserhaltung-und-stoesse/grundwissen/zentraler-elastischer-stoss
 
@@ -67,6 +69,7 @@ TODO --------
 VAL
 DOK
 IND
+- alle TODOS durcharbeiten
 
 
 DEV --------
@@ -75,15 +78,16 @@ IL
 -mass or density user input
 
 AL
--entitycoll: von acc bleibt nur noch acc_orthogonal_zu_posDiff
-
 -selfAcc rausnehmen???? !
-
--wenn update() kacke wird, mach Shape & sphere mutabel, arbeite mit copy und Getters
-    entities copy: Lists.immutable.fromStream(entities.stream().map(Shape::copy))
+    -alternatively: entitycoll: von selfAcc bleibt nur noch acc_orthogonal_zu_posDiff
 
 
 / loses zeug ---------------------------
+
+
+DEMONSTRATION / ABNAHME:
+
+-?mit MMB auf World klicken, um zu zeigen, dass es nicht illegal in IL verwendet wird
 
 
 --------------------------------------------------------------------------------------------

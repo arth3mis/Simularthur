@@ -5,11 +5,9 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import processing.core.PApplet;
 import processing.event.MouseEvent;
 
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
 public class SimularthurGUI extends PApplet {
 
@@ -34,7 +32,8 @@ public class SimularthurGUI extends PApplet {
         }
         lang = SUPPORTED_LANGUAGES[0];
 
-        size(800, 700, P3D);
+        //fullScreen(P3D);
+        size(800, 800, P3D);
         smooth(8);
     }
 
@@ -42,11 +41,15 @@ public class SimularthurGUI extends PApplet {
     Physicable world;
     float scale = 1;
     double simSpeed = 0;
+    double timeStep = 1/60.0;
+    double updateFreq = 60;
 
     // simulation display
-    float yaw = 0, pitch = PI, distance = 200;
+    float yaw = 0, pitch = PI, distance;
     boolean camLight = true;
     float mouseWheelDelta = 0;
+    // todo maybe trail w/ line segments
+    List<Shape> trail;
 
     // resources
     // todo work with SVG files, loadShape("x.svg"), shapeMode(CORNER/CENTER/CORNERS), shape(s, 0,0, 10,15)...
@@ -70,8 +73,10 @@ public class SimularthurGUI extends PApplet {
     }
 
     void reset() {
-        world = World.create(1000, new Vector3D(1, 1, 1)).setGravity(new Vector3D(0, -9.81, 0));
+        world = World.create(updateFreq, new Vector3D(1,1,1)).setGravity(new Vector3D(0, -9.81, 0));
+        scale = (float) (100 / Arrays.stream(world.getSize().toArray()).max().orElse(1));
         scale = 100;
+        distance = 200;
 //        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
 //                .limit(10)
 //                .reduce(world, (a, b) -> b);
@@ -107,16 +112,69 @@ public class SimularthurGUI extends PApplet {
 //                        .newSphere(0.05,1,1)
 //        );
 
-        // Newton-"Pendel" (Gute Demonstration von Genauigkeitsversprechen
-        world = world.spawn(world.at(new Vector3D(0.9,0.5,0.8))
-                .withVelocityAndAccel(new Vector3D(-1,0,0), Vector3D.ZERO)
-                .newSphere(0.05, 1, 1));
-        world = DoubleStream.iterate(0.4, d -> d < 0.7, d -> d + 0.1)
-                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5, 0.8)).newSphere(0.05, 1, 1)))
-                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+        // Newton-"Pendel" (Gute Demonstration von Genauigkeitsversprechen) (sehr lustig mit Gravitation)
+//        pitch = 0;
+//        world = world.spawn(world.at(new Vector3D(0.9,0.5,0.8))
+//                .withVelocityAndAccel(new Vector3D(-1,0,0), Vector3D.ZERO)
+//                .newSphere(0.05, 1, 1));
+//        world = DoubleStream.iterate(0.4, d -> d < 0.7, d -> d + 0.1)
+//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5, 0.8)).newSphere(0.05, 1, 1)))
+//                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
 
+        // Fehler in wallCollision Korrekturrechnung, Notfallberechnung
+//        world = world.spawn(world.at(new Vector3D(0.5,0.04,0.5))
+//                .withVelocityAndAccel(new Vector3D(0, -0.2, 0), Vector3D.ZERO)
+//                .newSphere(0.05,1,1));
+
+        // Kugelhaufen
+        world = world.spawn(Stream.generate(() -> world.randomPos(0.25).add(new Vector3D(0,0.23,0)))
+                .limit(1000)
+                .map(p -> world.at(p).newSphere(0.02, 1, 1))
+                .toList().toArray(new Shape[0]));
+
+        // A star is born
+//        double m = 1e12;
+//        double r = 0.5;
+//        world = world.spawn(
+//                world.at(new Vector3D(0.5,0.5,0.5))
+//                        .immovable()
+//                        .newSphere(0.1, calcSphereDensity(0.1, m)),
+//                world.at(new Vector3D(0.5 - r,0.5,0.5))
+//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)), Vector3D.ZERO)
+//                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
+//        // Ellipsenbahn -> Kreisbahn irgendwann; needs 10x10x10 world size
+//        world = world.spawn(
+//                world.at(new Vector3D(0.5,0.5,0.5).scalarMultiply(10))
+//                        .immovable()
+//                        .newSphere(0.1, calcSphereDensity(0.1, m)),
+//                world.at(new Vector3D(5 - r,5,5))
+//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+3), Vector3D.ZERO)
+//                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
+//
+//        trail = new ArrayList<>();
 
         simSpeed = simSpeed;
+    }
+
+    double calcSphereDensity(double radius, double mass) {
+        // m = dens * 4/3 * PI * r³
+        // dens = m * 3/4 / PI / r³
+        return mass * 3.0/4.0 / PI / radius/radius/radius;
+    }
+
+    /**
+     * Berechnet Bahngeschwindigkeit (v) für einen Körper (m1),
+     * der eine Kreisbahn um ein massereiches Objekt (m2) fliegen soll
+     * @param distance Abstand der beiden Massen
+     * @param centerMass Masse des umkreisten Objekts (m2)
+     * @return Betrag der Bahngeschwindigkeit
+     */
+    double calcCircularOrbitVel(double distance, double centerMass) {
+        // Zentripetalkraft: Fz = m1 * v² / r
+        // Gravitationskraft: Fg = G * m1 * m2 / r²
+        // Fz = Fg
+        // v = sqrt(G * m2 / r)
+        return Math.sqrt(World.GRAVITY_CONSTANT * centerMass / distance);
     }
 
     @Override
@@ -144,7 +202,7 @@ public class SimularthurGUI extends PApplet {
             //text(String.format("%.2f; %.2f; %.2f", world.getEntities()[i].selfAcc.getX(), world.getEntities()[i].selfAcc.getY(), world.getEntities()[i].selfAcc.getZ()), 10, 80*i+60);
         }
         hint(ENABLE_DEPTH_TEST);
-//println(world.getEntities()[0].vel);
+
         // based on mouse pos
         //pitch = ((float)mouseX/width-0.5)*PI*2.5;
         //yaw = ((float)mouseY/height*1.2-0.6)*PI;
@@ -171,16 +229,15 @@ public class SimularthurGUI extends PApplet {
         Shape[] shapes = world.getEntities();
         pushMatrix();
         translate(-(float) world.getSize().getX() * scale / 2, -(float) world.getSize().getY() * scale / 2, -(float) world.getSize().getZ() * scale / 2);
-        int i = 0;
-        for (Shape s : shapes) {
-            if (s.type == ShapeType.SPHERE) {
+        for (int i = 0; i < shapes.length; i++) {
+            //if (i > 100) break; // todo debug
+            if (shapes[i].type == ShapeType.SPHERE) {
                 pushMatrix();
-                translate((float) s.pos.getX() * scale, (float) s.pos.getY() * scale, (float) s.pos.getZ() * scale);
+                translate((float) shapes[i].pos.getX() * scale, (float) shapes[i].pos.getY() * scale, (float) shapes[i].pos.getZ() * scale);
                 noStroke();
                 fill(i < colors.length ? colors[i] : color(200));
-                sphere((float) ((Sphere) s).radius * scale);
+                sphere((float) ((Sphere) shapes[i]).radius * scale);
                 popMatrix();
-                i++;
             }
         }
         popMatrix();
@@ -191,7 +248,7 @@ public class SimularthurGUI extends PApplet {
         //r %= 2 * PI;
 
         if (simSpeed != 0)
-            world = world.update(1/60.0 * simSpeed);
+            world = world.update(timeStep * simSpeed);
     }
 
     @Override
@@ -199,6 +256,13 @@ public class SimularthurGUI extends PApplet {
         switch (key) {
             case BACKSPACE -> reset();
             case ' ' -> simSpeed = simSpeed == 0 ? 1 : 0;
+            case CODED -> {
+                switch (keyCode) {
+                    case RIGHT -> world = world.update(timeStep);
+                    case DOWN -> world = world.update(1/updateFreq);
+                    case LEFT -> world = world.update(1);
+                }
+            }
         }
     }
 

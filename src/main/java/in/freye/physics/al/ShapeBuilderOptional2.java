@@ -8,4 +8,10 @@ public class ShapeBuilderOptional2 extends ShapeBuilderBase {
         this.pos = pos;
         movable = false;
     }
+
+    // todo deletable, only convenience
+    /** Bounciness ist irrelevant für nicht bewegliche Körper */
+    public Shape newSphere(double radius, double materialDensity) {
+        return super.newSphere(radius, materialDensity, 0);
+    }
 }

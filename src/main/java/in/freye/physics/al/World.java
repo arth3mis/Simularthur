@@ -17,7 +17,7 @@ public class World implements Physicable {
     private final ImmutableList<Shape> entities;
 
     /** Allgemeine Gravitationskonstante G */
-    static final double GRAVITY_CONSTANT = 6.674e-11;
+    public static final double GRAVITY_CONSTANT = 6.674e-11;
     /**
      * Masse, ab der ein Körper andere Objekte stark genug anzieht, damit es signifikant für die Berechnung wird.
      * Signifikant := Andere Körper im Abstand = 1 m werden mit mind. 0,001 m/s² beschleunigt.
@@ -79,26 +79,12 @@ public class World implements Physicable {
         assert Double.isFinite(timeStep) && timeStep >= 0 : "Zeit kann nur endliche Schritte und nicht rückwärts laufen";
         // Wenn eine höhere Update-Frequenz gefordert ist, als timeStep bietet, wird wiederholt aktualisiert
         World world = this;
+        //long t1 = System.currentTimeMillis(); // todo debug
         for (double dt = timeStep; dt > 0; dt -= 1/updateFreq)
             world = new World(updateFreq, size, gravity, world.simulateChanges(Math.min(dt, 1/updateFreq)));
+        //System.out.println(System.currentTimeMillis() - t1);
         return world;
-
-            /*return Stream.iterate((Physicable) this, w -> w.update(1/updateFreq))
-                    .limit((int) (timeStep * updateFreq))
-                    .reduce(this, (v, w) -> w)
-                    .update(timeStep % (1/updateFreq));*/
-//        return update(timeStep % (1/updateFreq)).update((int) (timeStep * updateFreq));
-//        Physicable p = IntStream.range(0, (int) (timeStep * updateFreq)).boxed().reduce((Physicable) this, (w, x) -> w.update(1/updateFreq), (a, b) -> b);
-//        Physicable q = Stream.iterate((Physicable) this, w -> w.update(1/updateFreq)).limit((int) (timeStep * updateFreq)).reduce(this, (a, b) -> b);
-//        Physicable r = Stream.generate(() -> (Physicable) this).limit((int) (timeStep * updateFreq)).reduce(this, (w, x) -> w.update(1/updateFreq));
-
     }
-
-//    /**  */
-//    private World update(int n) {
-//        if (n == 0) return this;
-//        return ((World) update(1/updateFreq)).update(n - 1);
-//    }
 
     /** Wendet physikalische Berechnungen auf jeden Körper an */
     private ImmutableList<Shape> simulateChanges(double dt) {
