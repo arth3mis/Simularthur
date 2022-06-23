@@ -3,11 +3,10 @@ package in.freye.physics.il;
 import in.freye.physics.al.*;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import processing.core.PApplet;
+import processing.core.PVector;
 import processing.event.MouseEvent;
 
 import java.util.*;
-import java.util.stream.DoubleStream;
-import java.util.stream.Stream;
 
 public class SimularthurGUI extends PApplet {
 
@@ -42,12 +41,15 @@ public class SimularthurGUI extends PApplet {
     float scale = 1;
     double simSpeed = 0;
     double timeStep = 1/60.0;
-    double updateFreq = 60;
+    double updateFreq = 1000;
 
     // simulation display
-    float yaw = 0, pitch = PI, distance;
+    float cosYaw = 0, yaw = 0, pitch = PI;
+    float stdDistance = 200;
+    float distance = stdDistance;
     boolean camLight = true;
     float mouseWheelDelta = 0;
+    PVector camMove = new PVector(0,0,0);
     // todo maybe trail w/ line segments
     List<Shape> trail;
 
@@ -66,6 +68,9 @@ public class SimularthurGUI extends PApplet {
         return "";
     }
 
+    // style
+    Theme theme = Theme.DARK;
+
     @Override
     public void setup() {
         windowTitle(stringRes("windowTitle"));
@@ -73,10 +78,9 @@ public class SimularthurGUI extends PApplet {
     }
 
     void reset() {
-        world = World.create(updateFreq, new Vector3D(1,1,1)).setGravity(new Vector3D(0, -9.81, 0));
+        world = World.create(updateFreq, new Vector3D(1,1,1)).setGravity(new Vector3D(0, -1.81, 0));
         scale = (float) (100 / Arrays.stream(world.getSize().toArray()).max().orElse(1));
         scale = 100;
-        distance = 200;
 //        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
 //                .limit(10)
 //                .reduce(world, (a, b) -> b);
@@ -127,22 +131,24 @@ public class SimularthurGUI extends PApplet {
 //                .newSphere(0.05,1,1));
 
         // Kugelhaufen
-        world = world.spawn(Stream.generate(() -> world.randomPos(0.25).add(new Vector3D(0,0.23,0)))
-                .limit(1000)
-                .map(p -> world.at(p).newSphere(0.02, 1, 1))
-                .toList().toArray(new Shape[0]));
+//        world = world.spawn(Stream.generate(() -> world.randomPos(0.25).add(new Vector3D(0,0.23,0)))
+//                .limit(1000)
+//                .map(p -> world.at(p).newSphere(0.02, 1, 1))
+//                .toList().toArray(new Shape[0]));
 
-        // A star is born
+        // A star is born (Sehr satisfying mit )
+        double m = 1e10;
+        double r = 0.25;
+        world = world.spawn(
+                world.at(new Vector3D(0.5,0.5,0.5))
+                        .immovable()
+                        .newSphere(0.1, calcSphereDensity(0.1, m)),
+                world.at(new Vector3D(0.5 - r,0.5,0.5))
+                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+0.3), Vector3D.ZERO)
+                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
+//        // Ellipsenbahn -> Kreisbahn irgendwann; needs 10x10x10 world size
 //        double m = 1e12;
 //        double r = 0.5;
-//        world = world.spawn(
-//                world.at(new Vector3D(0.5,0.5,0.5))
-//                        .immovable()
-//                        .newSphere(0.1, calcSphereDensity(0.1, m)),
-//                world.at(new Vector3D(0.5 - r,0.5,0.5))
-//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)), Vector3D.ZERO)
-//                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
-//        // Ellipsenbahn -> Kreisbahn irgendwann; needs 10x10x10 world size
 //        world = world.spawn(
 //                world.at(new Vector3D(0.5,0.5,0.5).scalarMultiply(10))
 //                        .immovable()
@@ -151,7 +157,7 @@ public class SimularthurGUI extends PApplet {
 //                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+3), Vector3D.ZERO)
 //                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
 //
-//        trail = new ArrayList<>();
+        trail = new ArrayList<>();
 
         simSpeed = simSpeed;
     }
@@ -190,7 +196,7 @@ public class SimularthurGUI extends PApplet {
         directionalLight(128,128,128, 0,0,-1);
         if (camLight) popMatrix();
 
-        background(0);
+        background(Colors.WLD_BACKGROUND.get(theme));
 
         camera();
         hint(DISABLE_DEPTH_TEST);
@@ -210,11 +216,11 @@ public class SimularthurGUI extends PApplet {
         if (mousePressed) pitch += (mouseX - pmouseX) / 100.0;
         if (mousePressed) yaw += (mouseY - pmouseY) / 100.0;
         yaw = min(PI/2, max(-PI/2, yaw));
-        float cosA = Math.max(cos(yaw), 0.001f);
-        camera( distance * sin(pitch) * cosA,
-                distance * sin(yaw),
-                distance * cos(pitch) * cosA,
-                0,0,0,0,-1,0);
+        cosYaw = Math.max(cos(yaw), 0.001f);
+        camera( camMove.x + distance * sin(pitch) * cosYaw,
+                camMove.y + distance * sin(yaw),
+                camMove.z + distance * cos(pitch) * cosYaw,
+                camMove.x, camMove.y, camMove.z, 0,-1,0);
 
         pushMatrix();
         noStroke();
@@ -254,6 +260,12 @@ public class SimularthurGUI extends PApplet {
     @Override
     public void keyPressed() {
         switch (key) {
+            case 'w' -> camMove.y += 10;
+            case 's' -> camMove.y -= 10;
+            case 'a' -> camMove.add(10*cos(pitch)*cosYaw,0,10*-sin(pitch)*cosYaw);
+            case 'd' -> camMove.sub(10*cos(pitch)*cosYaw,0,10*-sin(pitch)*cosYaw);
+            // todo maybe transition
+            case 'r' -> {camMove.set(0,0,0); distance = stdDistance; yaw = 0; pitch = 0; }
             case BACKSPACE -> reset();
             case ' ' -> simSpeed = simSpeed == 0 ? 1 : 0;
             case CODED -> {
