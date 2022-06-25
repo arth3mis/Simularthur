@@ -19,87 +19,105 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 class PhysicableTest {
 
     Physicable world;
+    int roundingPrecision;
 
     /**
      * Basisraum für Tests (Größe 10m * 10m * 10m).
-     * Besitzt ein beispielhaftes Genauigkeitsversprechen von 60 Hertz,
-     * d.h. minimal wird ein Zeitschritt von 1/60s simuliert.
+     *
+     * Der Raum hat ein beispielhaftes Genauigkeitsversprechen von 60 Hertz,
+     * d.h. der minimale intern simulierte Zeitschritt ist 1/60s.
+     * Längere Simulationszeiten werden iterativ kleinschrittig ausgeführt.
+     *
+     * Die Rundung wird auf 1 Nanometer Genauigkeit eingestellt,
+     * um Problemen mit Floating-Point vorzubeugen, da double-Werte verglichen werden.
      */
     @BeforeEach
     void setup() {
         world = World.create(60, new Vector3D(10,10,10));
+        roundingPrecision = 9;
     }
 
     /**
      * Überprüft, ob allgemeine Gravitation des Raums korrekt auf Position und Geschwindigkeit eines Objekts wirkt
+     * (auch, wenn das Objekt bereits eine Geschwindigkeit hat)
      */
     @Test
-    @DisplayName("Raum-Gravitation wirkt korrekt auf Objekt")
+    @DisplayName("Raum-Gravitation wirkt korrekt auf bereits bewegtes Objekt")
     void worldGravity() {
-        // Gravitation definieren
-        Physicable w1 = world.setGravity(new Vector3D(0, -9.81, 0));  // erdähnlich
-
-        // Kugel erschaffen und Zeit um 1s fortschreiten
-        Physicable w2 = w1
-                .spawn(w1.at(new Vector3D(5,8,5)).newSphere(1, 1, 0))
+        Physicable w1 = world
+                // Gravitation definieren, hier erdähnlich
+                .setGravity(new Vector3D(0, -9.81, 0))
+                // Kugel mit konstanter Geschwindigkeit erschaffen
+                .spawn(world.at(new Vector3D(5,8,5))
+                        .withVelocityAndAccel(new Vector3D(1,-1,0), Vector3D.ZERO)
+                        .newSphere(1, 1, 1))
+                // Zeit um 1s fortschreiten
                 .update(1);
 
-        // Runden mit 1 Nanometer Präzision
-        int precision = 9;
-
-        // Nur y-Werte sollten sich ändern
+        // pX: x-Komponente der Position; vY: y-Komponente der Geschwindigkeit; ...
         assertAll(
-                // pY(t)  = 0.5 * aY           * t²   + vY_0 * t  + pY_0
-                // pY(1s) = 0.5 * (-9.81m/s²) * (1s)² + 0m/s * 1s + 8m
-                //        = 3.095m
+                // pX(t)  = 0.5 * aX    * t²    + vX(0s) * t  + pX(0s)
+                // pX(1s) = 0.5 * 0m/s² * (1s)² + 1m/s   * 1s + 5m
+                //        = 6m
+                //
+                // pY(t)  = 0.5 * aY        * t²    + vY(0s)  * t  + pY(0s)
+                // pY(1s) = 0.5 * -9.81m/s² * (1s)² + -1m/s   * 1s + 8m
+                //        = 2.095m
+                //
+                // pZ ändert sich nicht.
                 () -> assertArrayEquals(
-                        new Vector3D(5, 3.095, 5).toArray(),
-                        roundAll(w2.getEntities()[0].pos.toArray(), precision)),
-                // vY(t)  = aY          * t
-                // vY(1s) = (-9.81m/s²) * 1s
+                        new Vector3D(6, 2.095, 5).toArray(),
+                        roundAll(w1.getEntities()[0].pos.toArray(), roundingPrecision)),
+                // vX ändert sich nicht.
+                //
+                // vY(t)  = aY        * t
+                // vY(1s) = -9.81m/s² * 1s
                 //        = -9.81m/s
+                //
+                // vZ ändert sich nicht.
                 () -> assertArrayEquals(
-                        new Vector3D(0, -9.81, 0).toArray(),
-                        roundAll(w2.getEntities()[0].vel.toArray(), precision))
+                        new Vector3D(1, -10.81, 0).toArray(),
+                        roundAll(w1.getEntities()[0].vel.toArray(), roundingPrecision))
         );
     }
 
     /**
-     * Überprüft:
-     *  - Ob die Kollision mit den Wänden korrekt funktioniert
-     *  - Positions- und Geschwindigkeitskorrektur bei einer Kollision mit Beschleunigung
-     *  - Korrekte Anwendung reduzierter Reflexionsstärke
+     * Überprüft, ob die Kollision mit den Wänden korrekt funktioniert
      */
     @Test
-    @DisplayName("Kollision Objekt mit Raumgrenze")
+    @DisplayName("Beschleunigtes Objekt kollidiert korrekt mit Raumgrenze")
     void wallCollision() {
-        // Gravitation definieren
-        Physicable w1 = world.setGravity(new Vector3D(1,0,0));
-
-        // Kugel mit 75% Reflexionsstärke erschaffen und 1s Zeitschritt gehen
-        Physicable w2 = w1
-                .spawn(w1.at(new Vector3D(8.5,5,5)).newSphere(1, 1, 0.75))
+        Physicable w1 = world
+                // Gravitation definieren
+                .setGravity(new Vector3D(1,0,0))
+                // Kugel mit 75% Reflexionsstärke erschaffen
+                .spawn(world.at(new Vector3D(8.5,5,5)).newSphere(1, 1, 0.75))
+                // Zeit um 1s fortschreiten
                 .update(1);
 
-        // Runden mit 1 Nanometer Präzision
-        int precision = 9;
-
-        // Nur x-Werte sollten sich ändern
+        // pX: x-Komponente der Position; vY: y-Komponente der Geschwindigkeit; ...
         assertAll(
-                // Kollision nach 1s (Radius = 1m -> pX = 9m führt zu Kollision mit Wand bei x = 10m):
-                // pX(1s) = 0.5 * 1m/s² * (1s)² + 0m/s * 1s + 8.5m
+                // pX(t)  = 0.5 * aX    * t²    + vX(0s) * t  + pX(0s)
+                // pX(1s) = 0.5 * 1m/s² * (1s)² + 0m/s   * 1s + 8.5m
                 //        = 9m
+                // Radius = 1m -> Kollision mit Wand bei x = 10m tritt ein.
+                //
+                // pY ändert sich nicht.
+                // pZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(9, 5, 5).toArray(),
-                        roundAll(w2.getEntities()[0].pos.toArray(), precision)),
+                        roundAll(w1.getEntities()[0].pos.toArray(), roundingPrecision)),
                 // vX(1s) = 1m/s² * 1s
                 //        = 1m/s
-                // (75% reflektiert, also Faktor -0.75)
+                // Reflexionsstärke = 75% -> Faktor -0.75)
                 // vX' = -0.75 * 1m/s
                 //     = -0.75m/s
+                //
+                // vY ändert sich nicht.
+                // vZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(-0.75, 0, 0).toArray(),
-                        roundAll(w2.getEntities()[0].vel.toArray(), precision))
+                        roundAll(w1.getEntities()[0].vel.toArray(), roundingPrecision))
         );
     }
 

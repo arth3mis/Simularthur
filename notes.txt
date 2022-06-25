@@ -4,6 +4,7 @@ wie könnte ein monitoring fall aussehen, der den algorithmus beobachtet?
     vielleicht eine größere zahl kugeln, die auf einer achse liegen und von einer angestoßen werden
     oder einfacher: ein frame vor kollision, dann overlap durch pos+vel, um koll erk. und antw. zu testen
 
+Interface Tests sollen immer mehrere Sphere Manipulations-Methoden betreffen
 
 DOK:
 -Zu Immutability: Mehrere Java-Objekte vom Typ Shape können "derselbe Körper" sein (→ id, ...)
