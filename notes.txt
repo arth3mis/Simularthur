@@ -80,6 +80,7 @@ IL
 AL
 -selfAcc rausnehmen???? !
     -alternatively: entitycoll: von selfAcc bleibt nur noch acc_orthogonal_zu_posDiff
+-fix für "obenhalten" durch Kollision, trotz world gravity
 
 
 / loses zeug ---------------------------

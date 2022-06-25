@@ -1,6 +1,8 @@
 package in.freye.physics.al;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.eclipse.collections.api.list.ImmutableList;
 
 import java.util.stream.Stream;
@@ -8,6 +10,7 @@ import java.util.stream.Stream;
 public class Sphere extends Shape {
 
     public final double radius;
+    private static final Logger LOGGER = LogManager.getLogger("main");
 
     Sphere(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double radius, double density, double bounciness) {
         this(Shape.NO_ID, pos, vel, Vector3D.ZERO, selfAcc, movable, radius, density, bounciness);

@@ -27,6 +27,7 @@ public class World implements Physicable {
     private static final double GRAVITY_SIGNIFICANT_MASS = 1.5e7;
 
     /**
+     * Factory-Methode:
      * Erstellt eine neue Welt für physikalische Simulation
      * @param updateFrequency Anzahl, wie oft die Welt mindestens pro Sekunde aktualisiert wird
      *                        (Genauigkeitsversprechen des Systems)

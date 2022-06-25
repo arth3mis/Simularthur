@@ -2,11 +2,23 @@ package in.freye.physics.il;
 
 import in.freye.physics.al.*;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import processing.core.PApplet;
 import processing.core.PVector;
 import processing.event.MouseEvent;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.NumberFormat;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.ToDoubleFunction;
+import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
 public class SimularthurGUI extends PApplet {
 
@@ -36,24 +48,42 @@ public class SimularthurGUI extends PApplet {
         smooth(8);
     }
 
-    // simulation variables
+    // Variablen (Simulation)
     Physicable world;
     float scale = 1;
     double simSpeed = 0;
     double timeStep = 1/60.0;
     double updateFreq = 1000;
 
-    // simulation display
+    // Variablen (Verbindung Simulation & Display)
+    Future<Physicable> braveNewWorld;
+    boolean calculating = true;  // todo green/red light indicating if sim is computed in real-time or not
+    // Zusatzdaten für
+    static class Entity {
+        long id;
+        int color;
+        // todo maybe trail w/ line segments
+        // Speichert vergangene Zustände zum Anzeigen einer Spur im Raum
+        List<Shape> trail;
+
+        Entity(long id, int color, int trailLength) {
+            this.id = id;
+            this.color = color;
+            if (trailLength > 0)
+                trail = new ArrayList<>();
+        }
+    }
+    List<Entity> entities;
+
+    // Variablen (Anzeige der Simulation)
     float cosYaw = 0, yaw = 0, pitch = PI;
     float stdDistance = 200;
     float distance = stdDistance;
     boolean camLight = true;
     float mouseWheelDelta = 0;
     PVector camMove = new PVector(0,0,0);
-    // todo maybe trail w/ line segments
-    List<Shape> trail;
 
-    // resources
+    // Resourcen
     // todo work with SVG files, loadShape("x.svg"), shapeMode(CORNER/CENTER/CORNERS), shape(s, 0,0, 10,15)...
     final String STRINGS_PATH = "in.freye.physics.il.Strings";
     final Locale[] SUPPORTED_LANGUAGES = {
@@ -68,7 +98,7 @@ public class SimularthurGUI extends PApplet {
         return "";
     }
 
-    // style
+    // Style
     Theme theme = Theme.DARK;
 
     @Override
@@ -78,9 +108,10 @@ public class SimularthurGUI extends PApplet {
     }
 
     void reset() {
-        world = World.create(updateFreq, new Vector3D(1,1,1)).setGravity(new Vector3D(0, -1.81, 0));
-        scale = (float) (100 / Arrays.stream(world.getSize().toArray()).max().orElse(1));
+        world = World.create(updateFreq, new Vector3D(10,10,10
+        ));//.setGravity(new Vector3D(0, -9.81, 0));
         scale = 100;
+        scale = (float) (100 / Arrays.stream(world.getSize().toArray()).max().orElse(1));
 //        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
 //                .limit(10)
 //                .reduce(world, (a, b) -> b);
@@ -122,7 +153,8 @@ public class SimularthurGUI extends PApplet {
 //                .withVelocityAndAccel(new Vector3D(-1,0,0), Vector3D.ZERO)
 //                .newSphere(0.05, 1, 1));
 //        world = DoubleStream.iterate(0.4, d -> d < 0.7, d -> d + 0.1)
-//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5, 0.8)).newSphere(0.05, 1, 1)))
+//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5, 0.8))
+//                        .newSphere(0.05, 1, 1)))
 //                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
 
         // Fehler in wallCollision Korrekturrechnung, Notfallberechnung
@@ -130,34 +162,41 @@ public class SimularthurGUI extends PApplet {
 //                .withVelocityAndAccel(new Vector3D(0, -0.2, 0), Vector3D.ZERO)
 //                .newSphere(0.05,1,1));
 
+        // Billard
+//        world = world.spawn(
+//                world.at(new Vector3D(0.5,0.5,0.5))
+//                        .newSphere(0.05, 1, 1)
+//        );
+
         // Kugelhaufen
-//        world = world.spawn(Stream.generate(() -> world.randomPos(0.25).add(new Vector3D(0,0.23,0)))
-//                .limit(1000)
+//        world = world.spawn(Stream.generate(() -> world.randomPos(0.4).add(new Vector3D(0,0.3,0)))
+//                .limit(100)
 //                .map(p -> world.at(p).newSphere(0.02, 1, 1))
 //                .toList().toArray(new Shape[0]));
 
-        // A star is born (Sehr satisfying mit )
-        double m = 1e10;
-        double r = 0.25;
-        world = world.spawn(
-                world.at(new Vector3D(0.5,0.5,0.5))
-                        .immovable()
-                        .newSphere(0.1, calcSphereDensity(0.1, m)),
-                world.at(new Vector3D(0.5 - r,0.5,0.5))
-                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+0.3), Vector3D.ZERO)
-                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
-//        // Ellipsenbahn -> Kreisbahn irgendwann; needs 10x10x10 world size
-//        double m = 1e12;
-//        double r = 0.5;
+        // A star is born (Sehr satisfying mit worldGravity(0,-1.81,0))
+//        double m = 1e10;
+//        double r = 0.25;
 //        world = world.spawn(
-//                world.at(new Vector3D(0.5,0.5,0.5).scalarMultiply(10))
+//                world.at(new Vector3D(0.5,0.5,0.5))
 //                        .immovable()
 //                        .newSphere(0.1, calcSphereDensity(0.1, m)),
-//                world.at(new Vector3D(5 - r,5,5))
-//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+3), Vector3D.ZERO)
+//                world.at(new Vector3D(0.5 - r,0.5,0.5))
+//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+0.3), Vector3D.ZERO)
 //                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
-//
-        trail = new ArrayList<>();
+//        // Ellipsenbahn -> Kreisbahn irgendwann; needs 10x10x10 world size
+        double m = 1e12;
+        double r = 0.5;
+        world = world.spawn(
+                world.at(new Vector3D(0.5,0.5,0.5).scalarMultiply(10))
+                        .immovable()
+                        .newSphere(0.1, calcSphereDensity(0.1, m)),
+                world.at(new Vector3D(5 - r,5,5))
+                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+3), Vector3D.ZERO)
+                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1),
+                world.at(new Vector3D(5 - r*0.8,5,5))
+                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r*0.8, m)+0.2), Vector3D.ZERO)
+                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
 
         simSpeed = simSpeed;
     }
@@ -253,6 +292,13 @@ public class SimularthurGUI extends PApplet {
         //r += 0.02;
         //r %= 2 * PI;
 
+        // todo update parallel (not threads, wrapper classes)
+        if (!calculating) {
+            CompletableFuture<Physicable> cf = new CompletableFuture<>();
+            Executors.newSingleThreadExecutor().submit(() -> {
+                cf.complete(world.update(timeStep * simSpeed));
+            });
+        }
         if (simSpeed != 0)
             world = world.update(timeStep * simSpeed);
     }
@@ -281,5 +327,15 @@ public class SimularthurGUI extends PApplet {
     @Override
     public void mouseWheel(MouseEvent event) {
         mouseWheelDelta += event.getCount();
+    }
+
+    boolean saveState(Physicable world, String fileName) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(fileName))) {
+            bw.write(updateFreq+"");
+            bw.write(world.getSize().toString(NumberFormat.getInstance(Locale.ENGLISH))+"");
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
     }
 }

@@ -1,6 +1,8 @@
 package in.freye.physics.al;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
 import java.math.RoundingMode;
@@ -9,7 +11,8 @@ import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.Locale;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 class PhysicableTest {
 
@@ -106,5 +109,39 @@ class PhysicableTest {
         DecimalFormat df = new DecimalFormat("#." + "#".repeat(precision), new DecimalFormatSymbols(Locale.ENGLISH));
         df.setRoundingMode(RoundingMode.HALF_UP);
         return Double.parseDouble(df.format(num));
+    }
+}
+
+
+class SphereTest {
+
+    @Test
+    void calcAcceleration() {
+    }
+
+    @Test
+    void applyMovement() {
+    }
+
+    @Test
+    void handleWallCollision() {
+    }
+
+    @Test
+    void calcEntityCollisionCorrections() {
+    }
+
+    @Test
+    void applyEntityCollisionDeflections() {
+    }
+}
+
+
+class Logging {
+
+    private static final Logger LOGGER = LogManager.getLogger("monitoring");
+
+    public static void main(String[] args) {
+        LOGGER.info("Starte Simulation: Waagerechter Wurf");
     }
 }
