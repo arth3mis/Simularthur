@@ -3,6 +3,8 @@ package in.freye.physics.al;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.RoundingMode;
@@ -16,16 +18,23 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 class PhysicableTest {
 
+    Physicable world;
+
     /**
      * Basisraum für Tests (Größe 10m * 10m * 10m).
-     * Besitzt ein beispielhaftes Genauigkeitsversprechen von 60 Hertz, d.h. minimal wird ein Zeitschritt von 1/60s simuliert.
+     * Besitzt ein beispielhaftes Genauigkeitsversprechen von 60 Hertz,
+     * d.h. minimal wird ein Zeitschritt von 1/60s simuliert.
      */
-    Physicable world = World.create(60, new Vector3D(10,10,10));
+    @BeforeEach
+    void setup() {
+        world = World.create(60, new Vector3D(10,10,10));
+    }
 
     /**
      * Überprüft, ob allgemeine Gravitation des Raums korrekt auf Position und Geschwindigkeit eines Objekts wirkt
      */
     @Test
+    @DisplayName("Raum-Gravitation wirkt korrekt auf Objekt")
     void worldGravity() {
         // Gravitation definieren
         Physicable w1 = world.setGravity(new Vector3D(0, -9.81, 0));  // erdähnlich
@@ -62,6 +71,7 @@ class PhysicableTest {
      *  - Korrekte Anwendung reduzierter Reflexionsstärke
      */
     @Test
+    @DisplayName("Kollision Objekt mit Raumgrenze")
     void wallCollision() {
         // Gravitation definieren
         Physicable w1 = world.setGravity(new Vector3D(1,0,0));
@@ -93,10 +103,17 @@ class PhysicableTest {
         );
     }
 
+    /**
+     *
+     */
     @Test
+    @DisplayName("")
     void entityCollision() {
     }
 
+    /**
+     *
+     */
     @Test
     void entityGravity() {
     }
