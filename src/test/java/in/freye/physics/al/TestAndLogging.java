@@ -83,6 +83,7 @@ class PhysicableTest {
 
     /**
      * Überprüft, ob die Kollision mit den Wänden korrekt funktioniert
+     * (auch, wenn die Geschwindigkeit nicht konstant ist)
      */
     @Test
     @DisplayName("Beschleunigtes Objekt kollidiert korrekt mit Raumgrenze")
@@ -130,10 +131,67 @@ class PhysicableTest {
     }
 
     /**
+     * Überprüft, ob ein Körper, der mit konstanter Geschwindigkeit startet,
+     * eine Kreisbahn um ein massereiches Objekt fliegt und nach einer Umdrehung wieder an derselben Stelle ist.
      *
+     * Aufgrund der genäherten Gravitationsberechnung gibt es eine Abweichung, die proportional zur anziehenden Masse ist.
+     * Daher wird mit einer "geringeren" Masse gearbeitet, was zu einer längeren Umlaufzeit führt.
      */
     @Test
+    @DisplayName("Korrekter Orbitalflug um anziehendes Objekt")
     void entityGravity() {
+        // Kugel im Zentrum
+        Vector3D center = new Vector3D(5,5,5);
+        double centerMass = 1.5e7;  // 15000 Tonnen
+
+        // Von Masse zur Dichte zurückrechnen (Radius = 1m)
+        // m = density * 4/3 * PI * r³
+        // <=> density = m    * 3/4 / PI / r³
+        //     density = 1e10 * 3/4 / PI / 1
+        double centerDensity = centerMass * 3.0/4.0 / Math.PI;
+
+        // Umkreisende Kugel
+        double distance = 3; // Abstand zur Mitte
+        Vector3D startPos = center.add(new Vector3D(0, 0, distance));
+
+        // Startgeschwindigkeit v0 (startVel) der umkreisenden Kugel:
+        // (perfekte Kreisbahn existiert dann, wenn die Anziehungskraft die Zentripetalkraft "ist")
+        // Zentripetalkraft: Fz = m1 * v0² / r
+        // Gravitationskraft: Fg = G * m1 * m2 / r²
+        // Fz = Fg
+        // v0 = sqrt(G * m2 / r)
+        Vector3D startVel = new Vector3D(Math.sqrt(World.GRAVITY_CONSTANT * centerMass / distance), 0, 0);
+        
+        // Umlaufzeit T der umkreisenden Kugel:
+        // v = 2 * PI * r / T
+        // <=> T = 2 * PI * r / v
+        double orbitalPeriod = 2 * Math.PI * distance / startVel.getNorm();
+
+        // Gravitation ist 0 (Standard)
+        Physicable w1 = world
+                // massereiche Kugel im Zentrum erschaffen
+                .spawn(world.at(center).newSphere(1, centerDensity, 1))
+                // Kugel im Orbit mit Startgeschwindigkeit (senkrecht zum Abstandsvektor) erschaffen
+                .spawn(world.at(startPos)
+                        .withVelocityAndAccel(startVel, Vector3D.ZERO)
+                        .newSphere(1, 1, 1))
+                // Zeit um orbitale Umlaufzeit fortschreiten
+                .update(orbitalPeriod);
+
+        // Geschwindigkeit weicht weniger ab als Position
+        int posRoundingPrecision = 1;
+        int velRoundingPrecision = 3;
+
+        assertAll(
+                // Position ist wie vor der Umlaufzeit
+                () -> assertArrayEquals(
+                        startPos.toArray(),
+                        roundAll(w1.getEntities()[1].pos.toArray(), posRoundingPrecision)),
+                // Geschwindigkeit ist wie vor der Umlaufzeit
+                () -> assertArrayEquals(
+                        roundAll(startVel.toArray(), velRoundingPrecision),
+                        roundAll(w1.getEntities()[1].vel.toArray(), velRoundingPrecision))
+        );
     }
 
     double[] roundAll(double[] nums, int precision) {
@@ -177,6 +235,6 @@ class Logging {
     private static final Logger LOGGER = LogManager.getLogger("monitoring");
 
     public static void main(String[] args) {
-        LOGGER.info("Starte Simulation: Waagerechter Wurf");
+        LOGGER.info("Starte Simulation: Waagerechter Wurf mit Kollisionen");
     }
 }

@@ -22,9 +22,9 @@ public class World implements Physicable {
      * Masse, ab der ein Körper andere Objekte stark genug anzieht, damit es signifikant für die Berechnung wird.
      * Signifikant := Andere Körper im Abstand = 1 m werden mit mind. 0,001 m/s² beschleunigt.
      * Nach F=G*(m1*m2)/r² (mit F=m2*a und r=1m) folgt m1=a/G*r²
-     *  = (0,001m/s²)/(6,674e-11Nm²/kg²)*(1m²) = 14.983.518,13 kg ≈ 1,5e7 kg
+     *  = (0,001m/s²)/(6,674e-11Nm²/kg²)*(1m²) = 14.983.518,13 kg ≈ 1,4984e7 kg
      */
-    private static final double GRAVITY_SIGNIFICANT_MASS = 1.5e7;
+    private static final double GRAVITY_SIGNIFICANT_MASS = 1.4984e7;
 
     /**
      * Factory-Methode:

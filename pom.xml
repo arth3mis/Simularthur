@@ -46,7 +46,14 @@
 
 
 
-
+        <!-- local processing.core -->
+        <dependency>
+            <groupId>in.freye</groupId>
+            <artifactId>processing-core</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/core.jar</systemPath>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.github.johnpoth/jshell-maven-plugin -->
         <dependency>
