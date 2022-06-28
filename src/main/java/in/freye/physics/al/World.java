@@ -13,6 +13,8 @@ public class World implements Physicable {
     private final double updateFreq;
     /** size: Größe des Raums; gravity: Vektor der Beschleunigung eines homogenen Gravitationsfelds (wie z.B. auf der Erde) */
     private final Vector3D size, gravity;
+    /** Dichte des Mediums, das den Raum ausfüllt (Bsp.: 0=Vakuum; 1=Luft), Grundgröße für Strömungswiderstand */
+    private final double airDensity;
     /** Liste aller Körper im Raum */
     private final ImmutableList<Shape> entities;
 
@@ -34,15 +36,16 @@ public class World implements Physicable {
      * @param size Größe des Quaders, der die Welt darstellt
      */
     public static Physicable create(double updateFrequency, Vector3D size) {
-        return new World(updateFrequency, size, Vector3D.ZERO, Lists.immutable.empty());
+        return new World(updateFrequency, size, Vector3D.ZERO, 0, Lists.immutable.empty());
     }
 
-    private World(double updateFrequency, Vector3D size, Vector3D gravity, ImmutableList<Shape> entities) {
+    private World(double updateFrequency, Vector3D size, Vector3D gravity, double airDensity, ImmutableList<Shape> entities) {
         assert isValidVector(size) && isValidVector(gravity) && entities != null : "Die Werte müssen initialisiert sein";
         assert DoubleStream.of(size.toArray()).allMatch(d -> d > 0) : "Der Raum muss ein realer Quader sein";
         this.updateFreq = updateFrequency;
         this.size = size;
         this.gravity = gravity;
+        this.airDensity = airDensity;
         this.entities = entities;
     }
 
@@ -62,18 +65,18 @@ public class World implements Physicable {
 
     private World spawn(Shape entity) {
         assert entity != null : "Kein Element kann auch nicht spawnen";
-        return new World(updateFreq, size, gravity, entities.newWith(entity));
+        return new World(updateFreq, size, gravity, airDensity, entities.newWith(entity));
     }
 
     public Physicable replace(int atIndex, Shape entity) {
         assert atIndex >= 0 && atIndex < entities.size() : "Der Index muss in [0;Anzahl_Entities_in_Welt[ liegen";
         if (entity == null) return destroy(atIndex);
-        return new World(updateFreq, size, gravity, entities.take(atIndex).newWith(entity).newWithAll(entities.drop(atIndex)));
+        return new World(updateFreq, size, gravity, airDensity, entities.take(atIndex).newWith(entity).newWithAll(entities.drop(atIndex)));
     }
 
     /** Löscht Objekt an angegebener Stelle */
     private Physicable destroy(int atIndex) {
-        return new World(updateFreq, size, gravity, entities.newWithout(entities.get(atIndex)));
+        return new World(updateFreq, size, gravity, airDensity, entities.newWithout(entities.get(atIndex)));
     }
 
     public Physicable update(double timeStep) {
@@ -82,7 +85,7 @@ public class World implements Physicable {
         World world = this;
         //long t1 = System.currentTimeMillis(); // todo debug
         for (double dt = timeStep; dt > 0; dt -= 1/updateFreq)
-            world = new World(updateFreq, size, gravity, world.simulateChanges(Math.min(dt, 1/updateFreq)));
+            world = new World(updateFreq, size, gravity, airDensity, world.simulateChanges(Math.min(dt, 1/updateFreq)));
         //System.out.println(System.currentTimeMillis() - t1);
         return world;
     }
@@ -95,7 +98,7 @@ public class World implements Physicable {
                 .select(e1 -> e1.mass >= GRAVITY_SIGNIFICANT_MASS);
         // Berechnung der Gesamtbeschleunigung, die jeder Körper zum neuen Zeitpunkt hat
         ImmutableList<Shape> result1 = Lists.immutable.fromStream(entities.parallelStream()
-                .map(e -> e.calcAcceleration(gravity, gravityShapes)));
+                .map(e -> e.calcAcceleration(gravity, airDensity, gravityShapes)));
         // Aktualisieren der Position und Geschwindigkeit durch allgemeine Gravitation oder gleichförmige Bewegung
         ImmutableList<Shape> result2 = Lists.immutable.fromStream(result1.parallelStream()
                 .map(e -> e.applyMovement(dt)));
@@ -112,13 +115,14 @@ public class World implements Physicable {
         return result5;
     }
 
-
-
-
-
     public Physicable setGravity(Vector3D newGravity) {
         assert isValidVector(newGravity) : "Gravitation muss in Rechnungen anwendbar sein";
-        return new World(updateFreq, size, newGravity, entities);
+        return new World(updateFreq, size, newGravity, airDensity, entities);
+    }
+
+    public Physicable setAirDensity(double newAirDensity) {
+        assert newAirDensity >= 0 && Double.isFinite(airDensity) : "Dichte des Mediums im Raum muss eine endliche, positive Größe sein";
+        return new World(updateFreq, size, gravity, newAirDensity, entities);
     }
 
     public Vector3D getSize() {
@@ -127,6 +131,10 @@ public class World implements Physicable {
 
     public Vector3D getGravity() {
         return gravity;
+    }
+
+    public double getAirDensity() {
+        return airDensity;
     }
 
     public Shape[] getEntities() {

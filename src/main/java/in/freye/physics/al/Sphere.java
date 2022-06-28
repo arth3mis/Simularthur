@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 public class Sphere extends Shape {
 
     public final double radius;
-    private static final Logger LOGGER = LogManager.getLogger("main");
+    private static final Logger LOGGER = LogManager.getLogger("monitoring");
 
     Sphere(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double radius, double density, double bounciness) {
         this(Shape.NO_ID, pos, vel, Vector3D.ZERO, selfAcc, movable, radius, density, bounciness);
@@ -23,15 +23,20 @@ public class Sphere extends Shape {
         this.radius = radius;
     }
 
-    Shape calcAcceleration(Vector3D gravity, ImmutableList<Shape> gravityEntities) {
+    Shape calcAcceleration(Vector3D gravity, double airDensity, ImmutableList<Shape> gravityEntities) {
         if (!movable) return this;
         // Die Beschleunigung durch massereiche Objekte wird näherungsweise als konstant in einem kleinen Zeitabschnitt angesehen
         Vector3D eGravity = gravityEntities.stream().filter(e -> !pos.equals(e.pos))
                 // a = G * m / r²  * (r / |r|);   r (der Abstand) ist der Vektor von this.pos bis e.pos
                 .map(e -> e.pos.subtract(pos).scalarMultiply(World.GRAVITY_CONSTANT * e.mass / Math.pow(e.pos.subtract(pos).getNorm(), 3)))
                 .reduce(Vector3D.ZERO, Vector3D::add);
+        // Strömungswiderstand (die Beschleunigung wird ebenfalls als konstant in einem kleinen Zeitabschnitt angesehen)
+        // Fw = 0.5 * cw * rho * A * v²
+        // a = Fw / m
+        // Richtung: entgegen der Geschwindigkeit
+        Vector3D drag = vel.getNorm() == 0 ? Vector3D.ZERO : vel.scalarMultiply(-vel.getNorm() * 0.5 * type.dragCoefficient * airDensity * (Math.PI*radius*radius) / mass);
         // acc = Summe aller Beschleunigungen
-        return new Sphere(id, pos, vel, selfAcc.add(gravity).add(eGravity), selfAcc, movable, radius, density, bounciness);
+        return new Sphere(id, pos, vel, selfAcc.add(gravity).add(eGravity).add(drag), selfAcc, movable, radius, density, bounciness);
     }
 
     Shape applyMovement(double dt) {

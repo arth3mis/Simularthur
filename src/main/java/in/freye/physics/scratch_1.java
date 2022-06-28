@@ -31,7 +31,7 @@ class Scratch {
         Physicable world2 = world.update(1);
 
         //System.out.printf("Anzahl Elemente in Welt: %d\n", world.getEntities().length);
-        //System.out.println(world.getEntities()[0].pos);
+//        System.out.println(world.getEntities()[0].type.dragCoefficient);
 //        System.out.println(world.getEntities()[0].id);
 //        System.out.println(world2.getEntities()[0].id);
         //System.out.println(Lists.immutable.of(world.getEntities()).select(e -> e.id == 0).get(0).pos);

@@ -9,16 +9,22 @@ Interface Tests sollen immer mehrere Sphere Manipulations-Methoden betreffen
 DOK:
 1: Beschreib
 -SCREENSHOTS, QUELLEN
+-in der DOK und in Code-comments werden "Raum", "Welt" und "System" synonym verwendet
+-airDensity sollte korrekter "roomMediumDensity" oder so heißen, ich habe den intuitiveren Namen gewählt
 -Zu Immutability: Mehrere Java-Objekte vom Typ Shape können "derselbe Körper" sein (→ id, ...)
 -mit anderen formen im Sinn strukturiert, Implementierung würde aber Rahmen sprengen
 -anmerken (in DOK(?)), dass Vector3D immutabel ist
 -Anzahl Objekte * Genauigkeitsversprechen ~ Rechenintensität
+-Features
+    -...
 -Näherungen
     -Punktmassen
     -keine Rotation
-    -keine Reibung oder andere thermischen Verluste
-    -Gravitation durch andere Körper hat konstante Beschleunigung in einem timeStep
     -Kollisionen werden nacheinander zwischen je 2 Körpern berechnet
+    -Gravitation durch andere Körper hat konstante Beschleunigung in einem timeStep
+    -keine Reibung bei Kollision oder andere thermischen Verluste
+        -aber Strömungswiderstand
+            -hat konstante Beschleunigung in einem timeStep & ist reaktiv (nutzt "alte" vel) todo maybe change to temp. -> vel.add(acc) -> bräuchte auch temp acc, vllt unclean im code
 2: Algo
 -ich nutze CCD, finde Zeitpunkt der Kollision und passe pos&vel an
 -simulateChanges(): Jede Manipulation (durch stream.map realisiert) gibt eine neue Liste von Körpern zurück, welche den Zustand nach der jeweiligen Manip. darstellen
@@ -55,6 +61,8 @@ Externe Beschl. (Gravitation) wirken natürlich weiter"
 
 Quellen:
 https://en.wikipedia.org/wiki/Physics_engine
+(drag)
+    https://www.leifiphysik.de/mechanik/stroemungslehre/grundwissen/stroemungswiderstand-und-crmw-wert
 (entity collision deflection angle)
     https://en.wikipedia.org/wiki/Elastic_collision
     (not needed?) https://stackoverflow.com/a/3255204

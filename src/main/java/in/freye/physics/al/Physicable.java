@@ -22,19 +22,23 @@ public interface Physicable {
     /** Simuliert die Änderungen im System, die im Zeitschritt deltaTime (Einheit Sekunde) passieren */
     Physicable update(double deltaTime);
 
-    /** Ändert die Beschleunigung durch allgemeine Gravitation der Welt */
+    /** Ändert die Beschleunigung durch allgemeine Gravitation des Raums */
     Physicable setGravity(Vector3D newGravity);
+    /** Ändert die Dichte des Mediums im Raum */
+    Physicable setAirDensity(double newAirDensity);
 
     /** Gibt die Größe des simulierten Raums zurück */
     Vector3D getSize();
     /** Gibt die Gravitation des simulierten Raums zurück */
     Vector3D getGravity();
+    /** Gibt die Dichte des raumfüllenden Mediums zurück */
+    double getAirDensity();
     /** Gibt ein Array der im Raum vorhandenen Körper zurück */
     Shape[] getEntities();
 
     /** Prüft, ob die Gravitation mit der Erdanziehung übereinstimmt */
     default boolean isEarthLike() {
-        return getGravity().equals(new Vector3D(0, -9.81, 0));
+        return getGravity().equals(new Vector3D(0, -9.81, 0)) && getAirDensity() == 1;
     }
 
     /**

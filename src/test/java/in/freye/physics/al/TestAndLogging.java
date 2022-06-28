@@ -167,7 +167,8 @@ class PhysicableTest {
                 () -> assertArrayEquals(
                         roundAll(new Vector3D((m2*v2 + m1*(2*v1-v2)) / (m1+m2), 0, 0).toArray(), roundingPrecision),
                         roundAll(w1.getEntities()[1].vel.toArray(), roundingPrecision)),
-                // Die 2. Kollision sollte stattfinden wie in der Grafik von Wikipedia beschrieben: https://upload.wikimedia.org/wikipedia/commons/2/2c/Elastischer_sto%C3%9F_2D.gif.
+                // 2. Kollision:
+                // Sollte stattfinden wie in der Grafik von Wikipedia beschrieben: https://upload.wikimedia.org/wikipedia/commons/2/2c/Elastischer_sto%C3%9F_2D.gif.
                 // Demnach müssen die Geschwindigkeiten nach dem Stoß senkrecht zueinander sein,
                 // überprüfbar mit dem Skalarprodukt zwischen ihnen (muss 0 ergeben)
                 () -> assertEquals(
@@ -253,11 +254,11 @@ class PhysicableTest {
     }
 
     /**
-     * Überprüft, dass sich bei beschleunigter Bewegung mit Luftwiderstand nach einiger Zeit eine konstante Geschwindigkeit einstellt
+     * Überprüft, dass sich bei beschleunigter Bewegung und Strömungswiderstand nach einiger Zeit eine konstante Geschwindigkeit einstellt
      */
     @Test
-    @DisplayName("Luftwiderstand wirkt korrekt auf beschleunigtes Objekt")
-    void airResistance() {
+    @DisplayName("Strömungswiderstand wirkt korrekt auf beschleunigtes Objekt")
+    void drag() {
     }
 
     double[] roundAll(double[] nums, int precision) {

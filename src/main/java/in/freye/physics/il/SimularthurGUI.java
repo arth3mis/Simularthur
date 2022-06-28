@@ -108,7 +108,9 @@ public class SimularthurGUI extends PApplet {
     }
 
     void reset() {
-        world = World.create(updateFreq, new Vector3D(10,10,10));//.setGravity(new Vector3D(0, -9.81, 0));
+        world = World.create(updateFreq, new Vector3D(10,20,10))
+                .setGravity(new Vector3D(0, -9.81, 0))
+                .setAirDensity(1);
         scale = 100;
         scale = (float) (100 / Arrays.stream(world.getSize().toArray()).max().orElse(1));
 //        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
@@ -127,6 +129,12 @@ public class SimularthurGUI extends PApplet {
 //        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
 //                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
 //                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+
+        // Drag todo smth not quite right here
+        world = world.spawn(world.at(new Vector3D(3, 18.9, 2))
+                        .newSphere(1, calcSphereDensity(1, 100), 1),
+                world.at(new Vector3D(7, 18.9, 2))
+                        .newSphere(0.1, calcSphereDensity(1, 100), 1));
 
         // Einzel-Kollision + Impulserhaltung ("conservation of momentum")
 //        world = world.spawn(

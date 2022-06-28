@@ -47,9 +47,10 @@ public abstract class Shape {
     /**
      * Addiert eigene und externe Beschleunigung
      * @param gravity Allgemeine Gravitation
+     * @param airDensity Dichte des Mediums im Raum
      * @param gravityEntities Liste der anderen Körper im System, die durch Gravitation andere Körper beschleunigen
      */
-    abstract Shape calcAcceleration(Vector3D gravity, ImmutableList<Shape> gravityEntities);
+    abstract Shape calcAcceleration(Vector3D gravity, double airDensity, ImmutableList<Shape> gravityEntities);
     /**
      * Wendet folgende Formeln an:
      * pos = 0.5 * acc * dt² + vel * dt;
