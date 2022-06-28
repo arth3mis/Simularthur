@@ -38,7 +38,7 @@ public interface Physicable {
 
     /** Prüft, ob die Gravitation mit der Erdanziehung übereinstimmt */
     default boolean isEarthLike() {
-        return getGravity().equals(new Vector3D(0, -9.81, 0)) && getAirDensity() == 1;
+        return getGravity().equals(new Vector3D(0, -9.81, 0)) && getAirDensity() == 1.2;
     }
 
     /**

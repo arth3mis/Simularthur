@@ -13,7 +13,7 @@ public class World implements Physicable {
     private final double updateFreq;
     /** size: Größe des Raums; gravity: Vektor der Beschleunigung eines homogenen Gravitationsfelds (wie z.B. auf der Erde) */
     private final Vector3D size, gravity;
-    /** Dichte des Mediums, das den Raum ausfüllt (Bsp.: 0=Vakuum; 1=Luft), Grundgröße für Strömungswiderstand */
+    /** Dichte des Mediums, das den Raum ausfüllt (Bsp.: 0=Vakuum; 1.2≈Luft), Grundgröße für Strömungswiderstand */
     private final double airDensity;
     /** Liste aller Körper im Raum */
     private final ImmutableList<Shape> entities;
