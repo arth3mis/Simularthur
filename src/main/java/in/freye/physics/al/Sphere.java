@@ -33,7 +33,7 @@ public class Sphere extends Shape {
         // Strömungswiderstand (die Beschleunigung wird ebenfalls als konstant in einem kleinen Zeitabschnitt angesehen)
         // Fw = 0.5 * cw * rho * A * v²
         // a = Fw / m
-        // Richtung: entgegen der Geschwindigkeit
+        // Richtung: entgegen der Geschwindigkeit            |---- vereint Richtung und v² ----|
         Vector3D drag = vel.getNorm() == 0 ? Vector3D.ZERO : vel.scalarMultiply(-vel.getNorm() * 0.5 * type.dragCoefficient * airDensity * (Math.PI*radius*radius) / mass);
         // acc = Summe aller Beschleunigungen
         return new Sphere(id, pos, vel, selfAcc.add(gravity).add(eGravity).add(drag), selfAcc, movable, radius, density, bounciness);

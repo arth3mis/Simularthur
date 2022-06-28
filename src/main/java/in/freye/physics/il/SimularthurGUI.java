@@ -108,9 +108,9 @@ public class SimularthurGUI extends PApplet {
     }
 
     void reset() {
-        world = World.create(updateFreq, new Vector3D(10,20,10))
+        world = World.create(updateFreq, new Vector3D(5,10,5))
                 .setGravity(new Vector3D(0, -9.81, 0))
-                .setAirDensity(1);
+                .setAirDensity(1.2);
         scale = 100;
         scale = (float) (100 / Arrays.stream(world.getSize().toArray()).max().orElse(1));
 //        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
@@ -130,11 +130,12 @@ public class SimularthurGUI extends PApplet {
 //                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
 //                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
 
-        // Drag todo smth not quite right here
-        world = world.spawn(world.at(new Vector3D(3, 18.9, 2))
-                        .newSphere(1, calcSphereDensity(1, 100), 1),
-                world.at(new Vector3D(7, 18.9, 2))
-                        .newSphere(0.1, calcSphereDensity(1, 100), 1));
+        // Drag; needs 5x10x5 world size
+//        world = world.spawn(world.at(new Vector3D(3, 8, 3))
+//                        .newSphere(1.5, calcSphereDensity(1.5, 1), 1),
+//                world.at(new Vector3D(1, 6.55, 1))
+//                        //.withVelocityAndAccel(new Vector3D(0,-1,0), Vector3D.ZERO)
+//                        .newSphere(0.05, calcSphereDensity(0.05, 1), 1));
 
         // Einzel-Kollision + Impulserhaltung ("conservation of momentum")
 //        world = world.spawn(
@@ -205,6 +206,7 @@ public class SimularthurGUI extends PApplet {
 //                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r*0.8, m)+0.2), Vector3D.ZERO)
 //                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
 
+        // todo Kugelsternhaufen um massereiches Objekt
 
 
         simSpeed = simSpeed;

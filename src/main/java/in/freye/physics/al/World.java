@@ -83,10 +83,8 @@ public class World implements Physicable {
         assert Double.isFinite(timeStep) && timeStep >= 0 : "Zeit kann nur endliche Schritte und nicht rückwärts laufen";
         // Wenn eine höhere Update-Frequenz gefordert ist, als timeStep bietet, wird wiederholt aktualisiert
         World world = this;
-        //long t1 = System.currentTimeMillis(); // todo debug
         for (double dt = timeStep; dt > 0; dt -= 1/updateFreq)
             world = new World(updateFreq, size, gravity, airDensity, world.simulateChanges(Math.min(dt, 1/updateFreq)));
-        //System.out.println(System.currentTimeMillis() - t1);
         return world;
     }
 

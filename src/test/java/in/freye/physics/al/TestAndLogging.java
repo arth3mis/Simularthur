@@ -3,6 +3,7 @@ package in.freye.physics.al;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.eclipse.collections.api.factory.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,10 +16,37 @@ import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Hilfsmethoden zum Berechnen
+ */
+class Helper {
+
+    /** Rechnet von Masse und Radius auf die Dichte einer Kugel zurück */
+    static double calcSphereDensity(double radius, double mass) {
+        // m = density * 4/3 * π * r³
+        // density = m * 3/4 / π / r³
+        return mass * 3.0/4.0 / Math.PI / radius/radius/radius;
+    }
+
+//    static double[] roundAll(double[] nums, int precision) {
+//        return Arrays.stream(nums).map(d -> round(d, precision)).toArray();
+//    }
+//
+//    static double round(double num, int precision) {
+//        DecimalFormat df = new DecimalFormat("#." + "#".repeat(precision), new DecimalFormatSymbols(Locale.ENGLISH));
+//        df.setRoundingMode(RoundingMode.HALF_UP);
+//        return Double.parseDouble(df.format(num));
+//    }
+}
+
+/**
+ * Testet die AL über das Interface
+ */
 class PhysicableTest {
 
     Physicable world;
-    int roundingPrecision;
+    double tolerance;
+    double updateFreq;
 
     /**
      * Basisraum für Tests (Größe 10m · 10m · 10m).
@@ -27,13 +55,14 @@ class PhysicableTest {
      * d.h. der minimale intern simulierte Zeitschritt ist 1/60s.
      * Längere Simulationszeiten werden iterativ kleinschrittig ausgeführt.
      *
-     * Die Rundung wird auf 1 Nanometer Genauigkeit eingestellt,
+     * Die Toleranz wird auf 1 Nanometer eingestellt,
      * um Problemen mit Floating-Point vorzubeugen, da double-Werte verglichen werden.
      */
     @BeforeEach
     void setup() {
-        world = World.create(60, new Vector3D(10, 10, 10));
-        roundingPrecision = 9;
+        updateFreq = 60;
+        world = World.create(updateFreq, new Vector3D(10, 10, 10));
+        tolerance = 1e-9;
     }
 
     /**
@@ -66,7 +95,8 @@ class PhysicableTest {
                 // pZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(6, 2.095, 5).toArray(),
-                        roundAll(w1.getEntities()[0].pos.toArray(), roundingPrecision)),
+                        w1.getEntities()[0].pos.toArray(),
+                        tolerance),
                 // vX ändert sich nicht.
                 //
                 // vY(t)  = aY        * t  + vY(0s)
@@ -76,7 +106,8 @@ class PhysicableTest {
                 // vZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(1, -10.81, 0).toArray(),
-                        roundAll(w1.getEntities()[0].vel.toArray(), roundingPrecision))
+                        w1.getEntities()[0].vel.toArray(),
+                        tolerance)
         );
     }
 
@@ -106,7 +137,8 @@ class PhysicableTest {
                 // pZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(9, 5, 5).toArray(),
-                        roundAll(w1.getEntities()[0].pos.toArray(), roundingPrecision)),
+                        w1.getEntities()[0].pos.toArray(),
+                        tolerance),
                 // vX(1s) = 1m/s² * 1s
                 //        = 1m/s
                 // Reflexionsstärke = 75% -> Faktor -0.75)
@@ -117,7 +149,8 @@ class PhysicableTest {
                 // vZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(-0.75, 0, 0).toArray(),
-                        roundAll(w1.getEntities()[0].vel.toArray(), roundingPrecision))
+                        w1.getEntities()[0].vel.toArray(),
+                        tolerance)
         );
     }
 
@@ -161,19 +194,22 @@ class PhysicableTest {
                 // Geschwindigkeiten nach dem Stoß: aus Impuls-/Energieerhaltung hergeleitet, siehe: https://www.leifiphysik.de/mechanik/impulserhaltung-und-stoesse/grundwissen/zentraler-elastischer-stoss
                 // v1' = (m1*v1 + m2*(2*v2-v1)) / (m1+m2)
                 () -> assertArrayEquals(
-                        roundAll(new Vector3D((m1*v1 + m2*(2*v2-v1)) / (m1+m2), 0, 0).toArray(), roundingPrecision),
-                        roundAll(w1.getEntities()[0].vel.toArray(), roundingPrecision)),
+                        new double[]{(m1*v1 + m2*(2*v2-v1)) / (m1+m2), 0, 0},
+                        w1.getEntities()[0].vel.toArray(),
+                        tolerance),
                 // v2' = (m2*v2 + m1*(2*v1-v2)) / (m1+m2)
                 () -> assertArrayEquals(
-                        roundAll(new Vector3D((m2*v2 + m1*(2*v1-v2)) / (m1+m2), 0, 0).toArray(), roundingPrecision),
-                        roundAll(w1.getEntities()[1].vel.toArray(), roundingPrecision)),
+                        new double[]{(m2*v2 + m1*(2*v1-v2)) / (m1+m2), 0, 0},
+                        w1.getEntities()[1].vel.toArray(),
+                        tolerance),
                 // 2. Kollision:
                 // Sollte stattfinden wie in der Grafik von Wikipedia beschrieben: https://upload.wikimedia.org/wikipedia/commons/2/2c/Elastischer_sto%C3%9F_2D.gif.
                 // Demnach müssen die Geschwindigkeiten nach dem Stoß senkrecht zueinander sein,
                 // überprüfbar mit dem Skalarprodukt zwischen ihnen (muss 0 ergeben)
                 () -> assertEquals(
                         0.0,
-                        round(w1.getEntities()[3].vel.dotProduct(w1.getEntities()[2].vel), roundingPrecision))
+                        w1.getEntities()[3].vel.dotProduct(w1.getEntities()[2].vel),
+                        tolerance)
         );
     }
 
@@ -181,8 +217,8 @@ class PhysicableTest {
      * Überprüft, dass ein Körper, der mit konstanter Geschwindigkeit startet,
      * eine Kreisbahn um ein massereiches Objekt fliegt und nach einer Umdrehung wieder an derselben Stelle ist.
      *
-     * Aufgrund der genäherten Gravitationsberechnung gibt es eine Abweichung bei Position und Geschwindigkeit.
-     * Daher wird die Rundung der Werte angepasst, um die JUnit-Asserts zu bestehen.
+     * Aufgrund der genäherten Gravitationsberechnung gibt es eine Abweichung bei Position und Geschwindigkeit,
+     * daher ist die Toleranz beim Vergleichen der Werte größer als die global definierte.
      */
     @Test
     @DisplayName("Korrekter Orbital-Flug um anziehendes Objekt")
@@ -190,12 +226,7 @@ class PhysicableTest {
         // Kugel im Zentrum
         Vector3D center = new Vector3D(5, 5, 5);
         double centerMass = 1.5e7;  // 15000 Tonnen
-
-        // Von Masse zur Dichte zurückrechnen (Radius = 1m)
-        // m = density * 4/3 * PI * r³
-        // <=> density = m    * 3/4 / PI / r³
-        //     density = 1e10 * 3/4 / PI / 1
-        double centerDensity = centerMass * 3.0/4.0 / Math.PI;
+        double centerDensity = Helper.calcSphereDensity(1, centerMass);
 
         // Umkreisende Kugel
         double distance = 3; // Abstand zur Mitte
@@ -210,8 +241,8 @@ class PhysicableTest {
         Vector3D startVel = new Vector3D(Math.sqrt(World.GRAVITY_CONSTANT * centerMass / distance), 0, 0);
         
         // Umlaufzeit T der umkreisenden Kugel:
-        // v = 2 * PI * r / T
-        // <=> T = 2 * PI * r / v
+        // v = 2 * π * r / T
+        // <=> T = 2 * π * r / v
         double orbitalPeriod = 2 * Math.PI * distance / startVel.getNorm();
 
         // Gravitation ist 0 (Standard)
@@ -227,8 +258,8 @@ class PhysicableTest {
         Physicable w3 = w2.update(orbitalPeriod/2);  // Ganzer Umlauf
 
         // Geschwindigkeit weicht weniger ab als Position
-        int posRoundingPrecision = 1;
-        int velRoundingPrecision = 3;
+        double posTolerance = 1e-2;
+        double velTolerance = 1e-4;
 
         // Umkreisende Kugel hat den Index 1 in der Entity-Liste des Systems
         assertAll(
@@ -236,20 +267,24 @@ class PhysicableTest {
                 // Position ist auf der anderen Seite des Zentrums
                 () -> assertArrayEquals(
                         center.add(new Vector3D(0, 0, -distance)).toArray(),
-                        roundAll(w2.getEntities()[1].pos.toArray(), posRoundingPrecision)),
+                        w2.getEntities()[1].pos.toArray(),
+                        posTolerance),
                 // Geschwindigkeit ist die Negation der Startgeschwindigkeit (außer y-Wert, da der Orbit in der xz-Ebene liegt)
                 () -> assertArrayEquals(
-                        roundAll(new Vector3D(-startVel.getX(), startVel.getY(), -startVel.getZ()).toArray(), velRoundingPrecision),
-                        roundAll(w2.getEntities()[1].vel.toArray(), velRoundingPrecision)),
+                        new double[]{-startVel.getX(), startVel.getY(), -startVel.getZ()},
+                        w2.getEntities()[1].vel.toArray(),
+                        velTolerance),
                 // Ganzer Umlauf
                 // Position ist wie vor der Umlaufzeit
                 () -> assertArrayEquals(
                         startPos.toArray(),
-                        roundAll(w3.getEntities()[1].pos.toArray(), posRoundingPrecision)),
+                        w3.getEntities()[1].pos.toArray(),
+                        posTolerance),
                 // Geschwindigkeit ist wie vor der Umlaufzeit
                 () -> assertArrayEquals(
-                        roundAll(startVel.toArray(), velRoundingPrecision),
-                        roundAll(w3.getEntities()[1].vel.toArray(), velRoundingPrecision))
+                        startVel.toArray(),
+                        w3.getEntities()[1].vel.toArray(),
+                        velTolerance)
         );
     }
 
@@ -259,24 +294,98 @@ class PhysicableTest {
     @Test
     @DisplayName("Strömungswiderstand wirkt korrekt auf beschleunigtes Objekt")
     void drag() {
-    }
+        Physicable w1 = world
+                // Gravitation definieren
+                .setGravity(new Vector3D(0, -1, 0))
+                // Raum mit Luft füllen
+                .setAirDensity(1.2)
+                // leichte, große Kugel erschaffen, die viel Luftwiderstand erfahren kann
+                .spawn(world.at(new Vector3D(5, 8, 5))
+                        .newSphere(2, Helper.calcSphereDensity(2, 0.1), 1));
 
-    double[] roundAll(double[] nums, int precision) {
-        return Arrays.stream(nums).map(d -> round(d, precision)).toArray();
-    }
+        // Konstante Geschwindigkeit mit Strömungswiderstand (Fw) und Gravitation (Fg) tritt ein für:
+        // Fw = |Fg| (→ durch Masse m teilen)
+        // a = |g|
+        // 0.5 * dragCoefficient * airDensity * A * v² / m = |g|
+        // <=> v = sqrt(2 * m     * |g|   / dragCoefficient / airDensity / A)
+        //     v = sqrt(2 * 0.1kg * 1m/s² / 0.1             / 1.2        / (π(2m)²))
+        //     v = 0.36418281m/s
 
-    double round(double num, int precision) {
-        DecimalFormat df = new DecimalFormat("#." + "#".repeat(precision), new DecimalFormatSymbols(Locale.ENGLISH));
-        df.setRoundingMode(RoundingMode.HALF_UP);
-        return Double.parseDouble(df.format(num));
+        // Aktualisieren, bis a und g denselben Betrag haben (Gesamtbeschleunigung = 0)
+        do {
+            w1 = w1.update(1/updateFreq);
+        } while (w1.getEntities()[0].acc.getNorm() > tolerance);
+
+        // Die Geschwindigkeit muss jetzt den Wert v haben (siehe oben)
+        assertArrayEquals(
+                new Vector3D(0, -0.36418281, 0).toArray(),
+                w1.getEntities()[0].vel.toArray(),
+                tolerance);
     }
 }
 
 
+/**
+ * Testet die AL auf Klassenebene.
+ *
+ * Da alle physikalischen Berechnungen in der Klasse Shape (→ erweitert in Sphere) stattfinden,
+ * werden nur Methoden dieser Klasse getestet.
+ */
 class SphereTest {
 
+    double tolerance;
+
+    /**
+     * Die Toleranz wird auf 1 Nanometer eingestellt,
+     * um Problemen mit Floating-Point vorzubeugen, da double-Werte verglichen werden.
+     */
+    @BeforeEach
+    void setup() {
+        tolerance = 1e-9;
+    }
+
+    /**
+     * Überprüft, dass die Gesamtbeschleunigung korrekt berechnet wird
+     */
     @Test
     void calcAcceleration() {
+        Shape testObject = new Sphere(Vector3D.ZERO,
+                // Geschwindigkeit 2m/s
+                new Vector3D(0, 2, 0),
+                // Eigenbeschleunigung -1.1m/s²
+                new Vector3D(-1.1, 0, 0),
+                // Radius 1m, Masse 2kg
+                true, 1, Helper.calcSphereDensity(1, 2), 1);
+
+        // Gravitation 5.3m/s²
+        Vector3D gravity = new Vector3D(5.3, 0, 0);
+        // Dichte des Mediums im Raum 1
+        double airDensity = 1;
+        Shape gravityEntity = new Sphere(
+                // Abstand 5m zu testObject
+                new Vector3D(0, 0, 5), Vector3D.ZERO, Vector3D.ZERO,
+                // Radius 1m, Masse 10 Megatonnen
+                false, 1, Helper.calcSphereDensity(1, 1e10), 0);
+
+        // Ausführung der Methode
+        Shape result = testObject.calcAcceleration(gravity, airDensity, Lists.immutable.of(gravityEntity));
+
+        // aX = 5.3m/s² [gravity] + -1.1m/s² [Eigenbeschleunigung]
+        //    = 4.2m/s²
+        //
+        // aY = 0.5 * cw  * airDensity * A        * v²      / m [Strömungswiderstand]
+        //    = 0.5 * cw  * airDensity * πr²    * v²      / m
+        //    = 0.5 * 0.1 * 1          * π(1m)² * (2m/s)² / 2kg
+        //    = 0.1π m/s²
+        //    = -0.3141592655m/s² (Minus, weil entgegen der Geschwindigkeit)
+        //
+        // aZ = G                 * m      / r² [gravityEntity]
+        //    = 6.674e-11N*m²/kg² * 1e10kg / (5m)²
+        //    = 0.026696m/s²
+        assertArrayEquals(
+                new Vector3D(4.2, -0.3141592655, 0.026696).toArray(),
+                result.acc.toArray(),
+                tolerance);
     }
 
     @Test
