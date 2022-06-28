@@ -13,8 +13,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.Locale;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PhysicableTest {
 
@@ -22,7 +21,7 @@ class PhysicableTest {
     int roundingPrecision;
 
     /**
-     * Basisraum für Tests (Größe 10m * 10m * 10m).
+     * Basisraum für Tests (Größe 10m · 10m · 10m).
      *
      * Der Raum hat ein beispielhaftes Genauigkeitsversprechen von 60 Hertz,
      * d.h. der minimale intern simulierte Zeitschritt ist 1/60s.
@@ -33,12 +32,12 @@ class PhysicableTest {
      */
     @BeforeEach
     void setup() {
-        world = World.create(60, new Vector3D(10,10,10));
+        world = World.create(60, new Vector3D(10, 10, 10));
         roundingPrecision = 9;
     }
 
     /**
-     * Überprüft, ob allgemeine Gravitation des Raums korrekt auf Position und Geschwindigkeit eines Objekts wirkt
+     * Überprüft, dass allgemeine Gravitation des Raums korrekt auf Position und Geschwindigkeit eines Objekts wirkt
      * (auch, wenn das Objekt bereits eine Geschwindigkeit hat)
      */
     @Test
@@ -48,8 +47,8 @@ class PhysicableTest {
                 // Gravitation definieren, hier erdähnlich
                 .setGravity(new Vector3D(0, -9.81, 0))
                 // Kugel mit konstanter Geschwindigkeit erschaffen
-                .spawn(world.at(new Vector3D(5,8,5))
-                        .withVelocityAndAccel(new Vector3D(1,-1,0), Vector3D.ZERO)
+                .spawn(world.at(new Vector3D(5, 8, 5))
+                        .withVelocityAndAccel(new Vector3D(1, -1, 0), Vector3D.ZERO)
                         .newSphere(1, 1, 1))
                 // Zeit um 1s fortschreiten
                 .update(1);
@@ -70,9 +69,9 @@ class PhysicableTest {
                         roundAll(w1.getEntities()[0].pos.toArray(), roundingPrecision)),
                 // vX ändert sich nicht.
                 //
-                // vY(t)  = aY        * t
-                // vY(1s) = -9.81m/s² * 1s
-                //        = -9.81m/s
+                // vY(t)  = aY        * t  + vY(0s)
+                // vY(1s) = -9.81m/s² * 1s + -1m/s
+                //        = -10.81m/s
                 //
                 // vZ ändert sich nicht.
                 () -> assertArrayEquals(
@@ -82,7 +81,7 @@ class PhysicableTest {
     }
 
     /**
-     * Überprüft, ob die Kollision mit den Wänden korrekt funktioniert
+     * Überprüft, dass die Kollision mit den Wänden korrekt funktioniert
      * (auch, wenn die Geschwindigkeit nicht konstant ist)
      */
     @Test
@@ -90,9 +89,9 @@ class PhysicableTest {
     void wallCollision() {
         Physicable w1 = world
                 // Gravitation definieren
-                .setGravity(new Vector3D(1,0,0))
+                .setGravity(new Vector3D(1, 0, 0))
                 // Kugel mit 75% Reflexionsstärke erschaffen
-                .spawn(world.at(new Vector3D(8.5,5,5)).newSphere(1, 1, 0.75))
+                .spawn(world.at(new Vector3D(8.5, 5, 5)).newSphere(1, 1, 0.75))
                 // Zeit um 1s fortschreiten
                 .update(1);
 
@@ -123,25 +122,72 @@ class PhysicableTest {
     }
 
     /**
-     *
+     * Überprüft korrekte Kollision zwischen zwei Kugeln:
+     *  - Frontalkollision, verschiedene Massen (testet Impulserhaltung)
+     *  - versetzte Positionen, gleiche Massen (testet Reflexionswinkel).
+     * Die Aufspaltung in zwei Teil-Tests ermöglicht intuitivere, leichter berechenbare erwartete Werte
      */
     @Test
-    @DisplayName("")
+    @DisplayName("Korrekte Kollisionen zwischen zwei Kugeln")
     void entityCollision() {
+        // Werte für 1. Kugelpaar (Massen & Geschwindigkeiten)
+        double m1 = 1, m2 = 2;
+        double v1 = 1, v2 = -1;
+
+        // Gravitation ist 0 (Standard)
+        Physicable w1 = world
+                // Die Kugelpaare haben einen großen z-Abstand und bewegen sich nicht in z-Richtung; keine Interaktion zwischen den Paaren
+                .spawn(
+                        // 1. Kugelpaar (frontal, verschiedene Massen)
+                        world.at(new Vector3D(3, 5, 3))
+                                .withVelocityAndAccel(new Vector3D(v1, 0, 0), Vector3D.ZERO)
+                                .newSphere(1, m1, 1),  // Masse wird als Dichte übergeben, aber durch gleichen Radius stimmt das Verhältnis
+                        world.at(new Vector3D(7, 5, 3))
+                                .withVelocityAndAccel(new Vector3D(v2, 0, 0), Vector3D.ZERO)
+                                .newSphere(1, m2, 1),
+                        // 2. Kugelpaar (versetzt, gleiche Massen)
+                        // Der Aufbau soll dem in der Grafik von Wikipedia gleichen: https://upload.wikimedia.org/wikipedia/commons/2/2c/Elastischer_sto%C3%9F_2D.gif.
+                        world.at(new Vector3D(5, 5, 7))
+                                .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
+                                .newSphere(1, 1, 1),
+                        world.at(new Vector3D(6 + Math.sqrt(2),5 + Math.sqrt(2),7))
+                                .newSphere(1, 1, 1))
+                // Zeit um etwas mehr als 1s fortschreiten.
+                // Kollisionen passieren ca. dort, durch sqrt() und andere Berechnungen nicht exakt bei 1s
+                .update(1.0000001);
+
+        assertAll(
+                // 1. Kollision:
+                // Geschwindigkeiten nach dem Stoß: aus Impuls-/Energieerhaltung hergeleitet, siehe: https://www.leifiphysik.de/mechanik/impulserhaltung-und-stoesse/grundwissen/zentraler-elastischer-stoss
+                // v1' = (m1*v1 + m2*(2*v2-v1)) / (m1+m2)
+                () -> assertArrayEquals(
+                        roundAll(new Vector3D((m1*v1 + m2*(2*v2-v1)) / (m1+m2), 0, 0).toArray(), roundingPrecision),
+                        roundAll(w1.getEntities()[0].vel.toArray(), roundingPrecision)),
+                // v2' = (m2*v2 + m1*(2*v1-v2)) / (m1+m2)
+                () -> assertArrayEquals(
+                        roundAll(new Vector3D((m2*v2 + m1*(2*v1-v2)) / (m1+m2), 0, 0).toArray(), roundingPrecision),
+                        roundAll(w1.getEntities()[1].vel.toArray(), roundingPrecision)),
+                // Die 2. Kollision sollte stattfinden wie in der Grafik von Wikipedia beschrieben: https://upload.wikimedia.org/wikipedia/commons/2/2c/Elastischer_sto%C3%9F_2D.gif.
+                // Demnach müssen die Geschwindigkeiten nach dem Stoß senkrecht zueinander sein,
+                // überprüfbar mit dem Skalarprodukt zwischen ihnen (muss 0 ergeben)
+                () -> assertEquals(
+                        0.0,
+                        round(w1.getEntities()[3].vel.dotProduct(w1.getEntities()[2].vel), roundingPrecision))
+        );
     }
 
     /**
-     * Überprüft, ob ein Körper, der mit konstanter Geschwindigkeit startet,
+     * Überprüft, dass ein Körper, der mit konstanter Geschwindigkeit startet,
      * eine Kreisbahn um ein massereiches Objekt fliegt und nach einer Umdrehung wieder an derselben Stelle ist.
      *
-     * Aufgrund der genäherten Gravitationsberechnung gibt es eine Abweichung, die proportional zur anziehenden Masse ist.
-     * Daher wird mit einer "geringeren" Masse gearbeitet, was zu einer längeren Umlaufzeit führt.
+     * Aufgrund der genäherten Gravitationsberechnung gibt es eine Abweichung bei Position und Geschwindigkeit.
+     * Daher wird die Rundung der Werte angepasst, um die JUnit-Asserts zu bestehen.
      */
     @Test
-    @DisplayName("Korrekter Orbitalflug um anziehendes Objekt")
+    @DisplayName("Korrekter Orbital-Flug um anziehendes Objekt")
     void entityGravity() {
         // Kugel im Zentrum
-        Vector3D center = new Vector3D(5,5,5);
+        Vector3D center = new Vector3D(5, 5, 5);
         double centerMass = 1.5e7;  // 15000 Tonnen
 
         // Von Masse zur Dichte zurückrechnen (Radius = 1m)
@@ -174,24 +220,44 @@ class PhysicableTest {
                 // Kugel im Orbit mit Startgeschwindigkeit (senkrecht zum Abstandsvektor) erschaffen
                 .spawn(world.at(startPos)
                         .withVelocityAndAccel(startVel, Vector3D.ZERO)
-                        .newSphere(1, 1, 1))
-                // Zeit um orbitale Umlaufzeit fortschreiten
-                .update(orbitalPeriod);
+                        .newSphere(1, 1, 1));
+        // Zeit um orbitale Umlaufzeit fortschreiten
+        Physicable w2 = w1.update(orbitalPeriod/2);  // Halber Umlauf
+        Physicable w3 = w2.update(orbitalPeriod/2);  // Ganzer Umlauf
 
         // Geschwindigkeit weicht weniger ab als Position
         int posRoundingPrecision = 1;
         int velRoundingPrecision = 3;
 
+        // Umkreisende Kugel hat den Index 1 in der Entity-Liste des Systems
         assertAll(
+                // Halber Umlauf
+                // Position ist auf der anderen Seite des Zentrums
+                () -> assertArrayEquals(
+                        center.add(new Vector3D(0, 0, -distance)).toArray(),
+                        roundAll(w2.getEntities()[1].pos.toArray(), posRoundingPrecision)),
+                // Geschwindigkeit ist die Negation der Startgeschwindigkeit (außer y-Wert, da der Orbit in der xz-Ebene liegt)
+                () -> assertArrayEquals(
+                        roundAll(new Vector3D(-startVel.getX(), startVel.getY(), -startVel.getZ()).toArray(), velRoundingPrecision),
+                        roundAll(w2.getEntities()[1].vel.toArray(), velRoundingPrecision)),
+                // Ganzer Umlauf
                 // Position ist wie vor der Umlaufzeit
                 () -> assertArrayEquals(
                         startPos.toArray(),
-                        roundAll(w1.getEntities()[1].pos.toArray(), posRoundingPrecision)),
+                        roundAll(w3.getEntities()[1].pos.toArray(), posRoundingPrecision)),
                 // Geschwindigkeit ist wie vor der Umlaufzeit
                 () -> assertArrayEquals(
                         roundAll(startVel.toArray(), velRoundingPrecision),
-                        roundAll(w1.getEntities()[1].vel.toArray(), velRoundingPrecision))
+                        roundAll(w3.getEntities()[1].vel.toArray(), velRoundingPrecision))
         );
+    }
+
+    /**
+     * Überprüft, dass sich bei beschleunigter Bewegung mit Luftwiderstand nach einiger Zeit eine konstante Geschwindigkeit einstellt
+     */
+    @Test
+    @DisplayName("Luftwiderstand wirkt korrekt auf beschleunigtes Objekt")
+    void airResistance() {
     }
 
     double[] roundAll(double[] nums, int precision) {

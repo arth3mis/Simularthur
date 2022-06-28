@@ -53,7 +53,7 @@ public class SimularthurGUI extends PApplet {
     float scale = 1;
     double simSpeed = 0;
     double timeStep = 1/60.0;
-    double updateFreq = 1000;
+    double updateFreq = 10;
 
     // Variablen (Verbindung Simulation & Display)
     Future<Physicable> braveNewWorld;
@@ -108,8 +108,7 @@ public class SimularthurGUI extends PApplet {
     }
 
     void reset() {
-        world = World.create(updateFreq, new Vector3D(10,10,10
-        ));//.setGravity(new Vector3D(0, -9.81, 0));
+        world = World.create(updateFreq, new Vector3D(10,10,10));//.setGravity(new Vector3D(0, -9.81, 0));
         scale = 100;
         scale = (float) (100 / Arrays.stream(world.getSize().toArray()).max().orElse(1));
 //        world = Stream.iterate(world, w -> w.spawn(world.at(world.randomPos(0.05)).newSphere(0.05, 1)))
@@ -185,18 +184,20 @@ public class SimularthurGUI extends PApplet {
 //                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+0.3), Vector3D.ZERO)
 //                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
 //        // Ellipsenbahn -> Kreisbahn irgendwann; needs 10x10x10 world size
-        double m = 1e12;
-        double r = 0.5;
-        world = world.spawn(
-                world.at(new Vector3D(0.5,0.5,0.5).scalarMultiply(10))
-                        .immovable()
-                        .newSphere(0.1, calcSphereDensity(0.1, m)),
-                world.at(new Vector3D(5 - r,5,5))
-                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+3), Vector3D.ZERO)
-                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1),
-                world.at(new Vector3D(5 - r*0.8,5,5))
-                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r*0.8, m)+0.2), Vector3D.ZERO)
-                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
+//        double m = 1e12;
+//        double r = 0.5;
+//        world = world.spawn(
+//                world.at(new Vector3D(0.5,0.5,0.5).scalarMultiply(10))
+//                        .immovable()
+//                        .newSphere(0.1, calcSphereDensity(0.1, m)),
+//                world.at(new Vector3D(5 - r,5,5))
+//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+3), Vector3D.ZERO)
+//                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1),
+//                world.at(new Vector3D(5 - r*0.8,5,5))
+//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r*0.8, m)+0.2), Vector3D.ZERO)
+//                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
+
+
 
         simSpeed = simSpeed;
     }
