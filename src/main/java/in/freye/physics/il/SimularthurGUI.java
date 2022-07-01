@@ -13,6 +13,9 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 public class SimularthurGUI extends PApplet {
@@ -38,7 +41,7 @@ public class SimularthurGUI extends PApplet {
         setLanguage(0);
 
         //fullScreen(P3D);
-        size(cpWidth+simWidth, simHeight, P3D);
+        size(simWidth, simHeight, P3D);
         smooth(8);
     }
 
@@ -57,7 +60,7 @@ public class SimularthurGUI extends PApplet {
 
     // Variablen (Anzeige der Simulation)
     int simWidth = 800, simHeight = 800;
-    float stdYaw = PI/6, stdPitch = -PI/6;
+    float stdYaw = PI/9, stdPitch = -PI/5;
     float cosYaw = 0, yaw = stdYaw, pitch = stdPitch;
     float stdDistance = 200;
     float distance = stdDistance;
@@ -67,9 +70,20 @@ public class SimularthurGUI extends PApplet {
     PVector camMove = new PVector(0,0,0);
     boolean drawId = true;
     PFont idDisplayFont;
+    PShape boxSide;
+    PVector[] boxSideNormals = {
+            new PVector(1,0,0),
+            new PVector(-1,0,0),
+            new PVector(0,1,0),
+            new PVector(0,-1,0),
+            new PVector(0,0,1),
+            new PVector(0,0,-1),
+    };
+    int[] boxSideColors;
+    int[] boxSideVisible; // -1: never; 0: standard: 1: always
 
     // Variablen (Control Panel)
-    int cpWidth = 200;
+    int cpWidth = 350;
     PShape rect;
     PFont stdFont;
     NumberFormat fmt;
@@ -100,6 +114,7 @@ public class SimularthurGUI extends PApplet {
     public void setup() {
         windowTitle(stringRes("windowTitle"));
 
+        resetColors();
         reset();
         resetView();
 
@@ -107,6 +122,14 @@ public class SimularthurGUI extends PApplet {
 
         // setup shapes
         rect = loadShape("rect.svg");
+        boxSide = createShape();
+        boxSide.beginShape();
+        boxSide.vertex(-1,-1,0);
+        boxSide.vertex(-1,1,0);
+        boxSide.vertex(1,1,0);
+        boxSide.vertex(1,-1,0);
+        boxSide.endShape(CLOSE);
+        boxSide.disableStyle();
     }
 
     void resetView() {
@@ -119,8 +142,14 @@ public class SimularthurGUI extends PApplet {
         idDisplayFont = createFont("Arial", scale);
     }
 
+    void resetColors() {
+        boxSideColors = IntStream.generate(() -> Colors.WLD_WALLS.get(theme)).limit(6).toArray();
+        boxSideVisible = new int[]{0,0,0,0,0,0};
+    }
+
     void reset() {
         entities = new HashMap<>();
+
         world = World.create(updateFreq, new Vector3D(1,1,1));
                 //.setGravity(new Vector3D(0, -9.81, 0))
                 //.setAirDensity(1.2);
@@ -128,9 +157,12 @@ public class SimularthurGUI extends PApplet {
         // Einzelner Ball
         Shape s = world.at(new Vector3D(0.5, 0.5, 0.5))
                 //.withVelocityAndAccel(new Vector3D(0,0,0), new Vector3D(0,0,0))
-                .newSphere(0.4, 1, 1);
+                .newSphere(0.2, 1, 1);
         world = world.spawn(s);
         entities.put(s.id, new Entity(s, color(255,0,0)));
+
+        // todo stop time on load template
+        world = templatePoolTable(false);
     }
 
     double calcSphereDensity(double radius, double mass) {
@@ -172,17 +204,6 @@ public class SimularthurGUI extends PApplet {
 
         background(Colors.WLD_BACKGROUND.get(theme));
 
-
-        // Control Panel
-        pushMatrix();
-        camera();
-        hint(DISABLE_DEPTH_TEST);
-        noStroke();
-        fill(Colors.CP_BACKGROUND.get(theme));
-        drawRect(0, 0, cpWidth, height);
-        popMatrix();
-
-
         // Simulation
         hint(ENABLE_DEPTH_TEST);
 
@@ -221,25 +242,18 @@ public class SimularthurGUI extends PApplet {
         if (mousePressed) yaw += (mouseY - pmouseY) / 100.0;
         yaw = min(PI/2, max(-PI/2, yaw));
         cosYaw = Math.max(cos(yaw), 0.001f);
-        camera( camMove.x + distance * sin(pitch) * cosYaw,
+        PVector camEye = new PVector(
+                camMove.x + distance * sin(pitch) * cosYaw,
                 camMove.y + distance * sin(yaw),
-                camMove.z + distance * cos(pitch) * cosYaw,
-                camMove.x, camMove.y, camMove.z, 0,-1,0);
+                camMove.z + distance * cos(pitch) * cosYaw);
+        camera(camEye.x, camEye.y, camEye.z, camMove.x, camMove.y, camMove.z, 0,-1,0);
 //        camera();
 
 //        translate(cpWidth + simWidth/2f, simHeight/2f, 0);
 //        rotateY(pitch);
 //        rotateX(-yaw);
 
-        pushMatrix();
-        noStroke();
-        stroke(200, 0, 220);
-        strokeWeight(5);
-        noFill();
-        box((float) world.getSize().getX() * scale,
-                (float) world.getSize().getY() * scale,
-                (float) world.getSize().getZ() * scale);
-        popMatrix();
+        drawWalls(camEye);
 
         Shape[] shapes = world.getEntities();
         pushMatrix();
@@ -256,15 +270,75 @@ public class SimularthurGUI extends PApplet {
             distance *= rescale;
         }
         mouseWheelDelta = 0;
+
+
+
+        // Control Panel
+        pushMatrix();
+        camera();
+        hint(DISABLE_DEPTH_TEST);
+        noStroke();
+        fill(Colors.CP_BACKGROUND.get(theme));
+//        rect(0, 0, cpWidth, height);
+        popMatrix();
     }
 
-    void drawRect(float a, float b, float c, float d) {
-        beginShape();
-        vertex(a, b, 0);
-        vertex(a+c, b, 0);
-        vertex(a+c, b+d, 0);
-        vertex(a, b+d, 0);
-        endShape(CLOSE);
+    void drawWalls(PVector camEye) {
+        pushMatrix(); pushStyle();
+//        stroke(200, 0, 220);
+//        strokeWeight(5);
+        noStroke();
+        fill(Colors.WLD_WALLS.get(theme));  // später überschrieben
+//        box((float) world.getSize().getX() * scale,
+//                (float) world.getSize().getY() * scale,
+//                (float) world.getSize().getZ() * scale);
+        PVector v = new PVector((float) world.getSize().getX(), (float) world.getSize().getY(), (float) world.getSize().getZ());
+        v.mult(scale);
+
+        PVector look = PVector.sub(camMove, camEye);
+        BiPredicate<PVector, Integer> visible = (p, n) ->
+                (PVector.angleBetween(look, p) >= PI/2.3 || boxSideVisible[n] == 1) && boxSideVisible[n] != -1;
+
+        shapeMode(CENTER);
+        // hintere/vordere Wand auf z-Achse
+        translate(0, 0, v.z/2);
+        fill(boxSideColors[5]);
+        if (visible.test(boxSideNormals[5], 5))
+            shape(boxSide, v.x/2, v.y/2, v.x, v.y);
+        translate(0, 0, -v.z);
+        fill(boxSideColors[4]);
+        if (visible.test(boxSideNormals[4], 4))
+            shape(boxSide, v.x/2, v.y/2, v.x, v.y);
+
+        // linke/rechte Wand auf x-Achse
+        translate(v.x/2, 0, v.z/2);
+        rotateY(PI/2);
+        fill(boxSideColors[1]);
+        if (visible.test(boxSideNormals[1], 1))
+            shape(boxSide, v.z/2, v.y/2, v.z, v.y);
+//            rotateY(-PI/2);
+        translate(0, 0, -v.x);  // ist noch rotiert, sonst als x-Komponente
+//            rotateY(PI/2);
+        fill(boxSideColors[0]);
+        if (visible.test(boxSideNormals[0], 0))
+            shape(boxSide, v.z/2, v.y/2, v.z, v.y);
+        rotateY(-PI/2);
+
+        // obere/untere Wand auf y-Achse
+        translate(v.x/2, v.y/2, 0);
+        rotateX(PI/2);
+        fill(boxSideColors[3]);
+        if (visible.test(boxSideNormals[3], 3))
+            shape(boxSide, v.x/2, v.z/2, v.x, v.z);
+//            rotateX(-PI/2);
+        translate(0, 0, v.y);  // ist noch rotiert, sonst als y-Komponente
+//            rotateX(PI/2);
+        fill(boxSideColors[2]);
+        if (visible.test(boxSideNormals[2], 2))
+            shape(boxSide, v.x/2, v.z/2, v.x, v.z);
+//            rotateX(-PI/2);
+
+        popMatrix(); popStyle();
     }
 
     class Entity {
@@ -326,8 +400,8 @@ public class SimularthurGUI extends PApplet {
             case 's' -> camMove.y -= 10;
             case 'a' -> camMove.add(10*cos(pitch)*cosYaw,0,10*-sin(pitch)*cosYaw);
             case 'd' -> camMove.sub(10*cos(pitch)*cosYaw,0,10*-sin(pitch)*cosYaw);
-            // todo maybe transition
             case 'r' -> resetView();
+            case 'c' -> camLight = !camLight;
             case 'i' -> drawId = !drawId;
             case BACKSPACE -> reset();
             case ' ' -> simSpeed = simSpeed == 0 ? 1 : 0;
@@ -373,10 +447,15 @@ public class SimularthurGUI extends PApplet {
         // Standard: neun Fuß Tisch (254cm x 127cm), Kugeln: 57.2mm Durchmesser, 170g
         double radius = 0.5 * 57.2e-3, bounciness = 0.95;
         final Physicable w1 = World.create(updateFreq, new Vector3D(2.54, radius*2.1, 1.27))
+                // Imitieren von Gleitreibung/Rollreibung
                 .setAirDensity(1200);
-        // Startgeschwindigkeit variiert (good ones: {16.12,0,-0.16}, {14.34,0,-0.13}
+        // Tischfarben
+        int green = color(0,210,0), brown = color(110, 39, 1);
+        boxSideColors = new int[]{brown,brown,green,brown,brown,brown};
+        boxSideVisible = new int[]{1,1,1,-1,1,1};
+        // Startgeschwindigkeit variiert
         Random r = new Random();
-        Vector3D startVel = randomStartSpeed ? new Vector3D(r.nextDouble(11,17),0,r.nextDouble(-0.2,0.2)) : new Vector3D(15,0,0);
+        Vector3D startVel = randomStartSpeed ? new Vector3D(r.nextDouble(11,17),0,r.nextDouble(-0.2,0.2)) : new Vector3D(14.34,0,-0.13);
         final Physicable w2 = w1.spawn(
                 w1.at(new Vector3D(2.54/5, radius+0.001, 1.27/2))
                         .withVelocityAndAccel(startVel, Vector3D.ZERO)
@@ -391,6 +470,8 @@ public class SimularthurGUI extends PApplet {
                 .toArray(Shape[]::new);
         Physicable w3 = w2.spawn(balls);
         Arrays.stream(w3.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(random(100,255)), 0)));
+        // todo colors
+        entities.get(1L).color = color(255);
         return w3;
     }
 
