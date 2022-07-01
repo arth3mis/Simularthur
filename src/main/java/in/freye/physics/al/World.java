@@ -4,6 +4,7 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 
+import java.util.Arrays;
 import java.util.function.BiFunction;
 import java.util.stream.DoubleStream;
 
@@ -40,7 +41,7 @@ public class World implements Physicable {
     }
 
     private World(double updateFrequency, Vector3D size, Vector3D gravity, double airDensity, ImmutableList<Shape> entities) {
-        assert isValidVector(size) && isValidVector(gravity) && entities != null : "Die Werte müssen initialisiert sein";
+        assert isValidVector(size, gravity) && entities != null : "Die Werte müssen initialisiert sein";
         assert DoubleStream.of(size.toArray()).allMatch(d -> d > 0) : "Der Raum muss ein realer Quader sein";
         this.updateFreq = updateFrequency;
         this.size = size;
@@ -68,15 +69,17 @@ public class World implements Physicable {
         return new World(updateFreq, size, gravity, airDensity, entities.newWith(entity));
     }
 
-    public Physicable replace(int atIndex, Shape entity) {
-        assert atIndex >= 0 && atIndex < entities.size() : "Der Index muss in [0;Anzahl_Entities_in_Welt[ liegen";
-        if (entity == null) return destroy(atIndex);
-        return new World(updateFreq, size, gravity, airDensity, entities.take(atIndex).newWith(entity).newWithAll(entities.drop(atIndex)));
+    public Physicable replace(long id, Shape entity) {
+        assert entities.select(e -> e.id == id).notEmpty() : "Die Welt muss den Körper mit der angegebenen ID enthalten";
+        if (entity == null) return destroy(id);
+        ImmutableList<Shape> pre = entities.takeWhile(e -> e.id != id);
+        return new World(updateFreq, size, gravity, airDensity, pre.newWith(entity).newWithAll(entities.drop(pre.size()+1).dropWhile(e -> e.id != id)));
     }
 
     /** Löscht Objekt an angegebener Stelle */
-    private Physicable destroy(int atIndex) {
-        return new World(updateFreq, size, gravity, airDensity, entities.newWithout(entities.get(atIndex)));
+    private Physicable destroy(long id) {
+        // id wird in replace() abgesichert
+        return new World(updateFreq, size, gravity, airDensity, entities.newWithout(entities.select(e -> e.id == id).getAny()));
     }
 
     public Physicable update(double timeStep) {
@@ -90,7 +93,6 @@ public class World implements Physicable {
 
     /** Wendet physikalische Berechnungen auf jeden Körper an */
     private ImmutableList<Shape> simulateChanges(double dt) {
-        // todo check if parallel map ops change order in stream or returned list -> seems not to be the case
         // Filtern aller Körper, deren Masse eine signifikante Gravitation ausübt
         ImmutableList<Shape> gravityShapes = entities
                 .select(e1 -> e1.mass >= GRAVITY_SIGNIFICANT_MASS);
@@ -104,13 +106,11 @@ public class World implements Physicable {
         ImmutableList<Shape> result3 = Lists.immutable.fromStream(result2.parallelStream()
                 .map(e -> e.handleWallCollision(size, result1.select(e1 -> e1.equals(e)).getAny())));
         // Kollision zwischen Körpern (Korrektur Position/Geschwindigkeit)
-        // todo check params and logic
         ImmutableList<Shape> result4 = Lists.immutable.fromStream(result3.parallelStream()
                 .map(e -> e.calcEntityCollisionCorrections(result3, result1.select(e1 -> e1.equals(e)).getAny())));
         // Kollision zwischen Körpern (Kollisionsantwort mit Impulserhaltung, Energieerhaltung)
-        ImmutableList<Shape> result5 = Lists.immutable.fromStream(result4.parallelStream()
+        return Lists.immutable.fromStream(result4.parallelStream()
                 .map(e -> e.applyEntityCollisionDeflections(result3, result4)));
-        return result5;
     }
 
     public Physicable setGravity(Vector3D newGravity) {
@@ -140,8 +140,8 @@ public class World implements Physicable {
     }
 
     /** Testet den Vektor, dass er nicht null ist und keine NaN/Infinity-Werte enthält */
-    static boolean isValidVector(Vector3D v) {
-        return v != null && DoubleStream.of(v.toArray()).allMatch(Double::isFinite);
+    static boolean isValidVector(Vector3D... v) {
+        return v != null && v.length > 0 && Arrays.stream(v).flatMapToDouble(u -> Arrays.stream(u.toArray())).allMatch(Double::isFinite);
     }
 
     /** Testet jede Komponente des ersten Vektors gegen die des zweiten */

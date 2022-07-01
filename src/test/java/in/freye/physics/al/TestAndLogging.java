@@ -112,6 +112,41 @@ class PhysicableTest {
     }
 
     /**
+     * Überprüft, dass sich bei beschleunigter Bewegung und Strömungswiderstand nach einiger Zeit eine konstante Geschwindigkeit einstellt
+     */
+    @Test
+    @DisplayName("Strömungswiderstand wirkt korrekt auf beschleunigtes Objekt")
+    void drag() {
+        Physicable w1 = world
+                // Gravitation definieren
+                .setGravity(new Vector3D(0, -1, 0))
+                // Raum mit Luft füllen
+                .setAirDensity(1.2)
+                // leichte, große Kugel erschaffen, die viel Luftwiderstand erfahren kann
+                .spawn(world.at(new Vector3D(5, 8, 5))
+                        .newSphere(2, Helper.calcSphereDensity(2, 0.1), 1));
+
+        // Konstante Geschwindigkeit mit Strömungswiderstand (Fw) und Gravitation (Fg) tritt ein für:
+        // Fw = |Fg| (→ durch Masse m teilen)
+        // a = |g|
+        // 0.5 * dragCoefficient * airDensity * A * v² / m = |g|
+        // <=> v = sqrt(2 * m     * |g|   / dragCoefficient / airDensity / A)
+        //     v = sqrt(2 * 0.1kg * 1m/s² / 0.1             / 1.2        / (π(2m)²))
+        //     v = 0.36418281m/s
+
+        // Aktualisieren, bis a und g denselben Betrag haben (Gesamtbeschleunigung = 0)
+        do {
+            w1 = w1.update(1/updateFreq);
+        } while (w1.getEntities()[0].acc.getNorm() > tolerance);
+
+        // Die Geschwindigkeit muss jetzt den Wert v haben (siehe oben)
+        assertArrayEquals(
+                new Vector3D(0, -0.36418281, 0).toArray(),
+                w1.getEntities()[0].vel.toArray(),
+                tolerance);
+    }
+
+    /**
      * Überprüft, dass die Kollision mit den Wänden korrekt funktioniert
      * (auch, wenn die Geschwindigkeit nicht konstant ist)
      */
@@ -287,41 +322,6 @@ class PhysicableTest {
                         velTolerance)
         );
     }
-
-    /**
-     * Überprüft, dass sich bei beschleunigter Bewegung und Strömungswiderstand nach einiger Zeit eine konstante Geschwindigkeit einstellt
-     */
-    @Test
-    @DisplayName("Strömungswiderstand wirkt korrekt auf beschleunigtes Objekt")
-    void drag() {
-        Physicable w1 = world
-                // Gravitation definieren
-                .setGravity(new Vector3D(0, -1, 0))
-                // Raum mit Luft füllen
-                .setAirDensity(1.2)
-                // leichte, große Kugel erschaffen, die viel Luftwiderstand erfahren kann
-                .spawn(world.at(new Vector3D(5, 8, 5))
-                        .newSphere(2, Helper.calcSphereDensity(2, 0.1), 1));
-
-        // Konstante Geschwindigkeit mit Strömungswiderstand (Fw) und Gravitation (Fg) tritt ein für:
-        // Fw = |Fg| (→ durch Masse m teilen)
-        // a = |g|
-        // 0.5 * dragCoefficient * airDensity * A * v² / m = |g|
-        // <=> v = sqrt(2 * m     * |g|   / dragCoefficient / airDensity / A)
-        //     v = sqrt(2 * 0.1kg * 1m/s² / 0.1             / 1.2        / (π(2m)²))
-        //     v = 0.36418281m/s
-
-        // Aktualisieren, bis a und g denselben Betrag haben (Gesamtbeschleunigung = 0)
-        do {
-            w1 = w1.update(1/updateFreq);
-        } while (w1.getEntities()[0].acc.getNorm() > tolerance);
-
-        // Die Geschwindigkeit muss jetzt den Wert v haben (siehe oben)
-        assertArrayEquals(
-                new Vector3D(0, -0.36418281, 0).toArray(),
-                w1.getEntities()[0].vel.toArray(),
-                tolerance);
-    }
 }
 
 
@@ -345,7 +345,7 @@ class SphereTest {
     }
 
     /**
-     * Überprüft, dass die Gesamtbeschleunigung korrekt berechnet wird
+     * Überprüft, dass die Gesamtbeschleunigung korrekt berechnet wird.
      */
     @Test
     void calcAcceleration() {
@@ -368,7 +368,7 @@ class SphereTest {
                 false, 1, Helper.calcSphereDensity(1, 1e10), 0);
 
         // Ausführung der Methode
-        Shape result = testObject.calcAcceleration(gravity, airDensity, Lists.immutable.of(gravityEntity));
+        Shape resultObject = testObject.calcAcceleration(gravity, airDensity, Lists.immutable.of(gravityEntity));
 
         // aX = 5.3m/s² [gravity] + -1.1m/s² [Eigenbeschleunigung]
         //    = 4.2m/s²
@@ -384,18 +384,111 @@ class SphereTest {
         //    = 0.026696m/s²
         assertArrayEquals(
                 new Vector3D(4.2, -0.3141592655, 0.026696).toArray(),
-                result.acc.toArray(),
+                resultObject.acc.toArray(),
                 tolerance);
     }
 
+    /**
+     * Überprüft, dass die Bewegungsgleichungen korrekt ausgeführt werden.
+     *
+     * Setzt voraus, dass calcAcceleration korrekt funktioniert
+     */
     @Test
     void applyMovement() {
+        // Gravitation
+        Vector3D gravity = new Vector3D(0, -9.81, 0);
+        // Objekt mit konstanter Startgeschwindigkeit
+        Shape testObject = new Sphere(Vector3D.ZERO, new Vector3D(1,0,0), Vector3D.ZERO, true, 1, 1, 1);
+
+        // Gesamtbeschleunigung berechnen
+        Shape result1 = testObject.calcAcceleration(gravity, 0, Lists.immutable.empty());
+        // Ausführung der Methode
+        Shape resultObject = result1.applyMovement(2);
+
+        assertAll(
+                // pX(t)  = v    * t
+                // pX(2s) = 1m/s * 2s
+                //        = 2m
+                //
+                // pY(t)  = 0.5 * a         * (2s)²
+                // pX(2s) = 0.5 * -9.81m/s² * (2s)²
+                //        = -19.62m
+                //
+                // pZ bleibt 0
+                () -> assertArrayEquals(
+                        new Vector3D(2, -19.62, 0).toArray(),
+                        resultObject.pos.toArray(),
+                        tolerance),
+                // vX ist konstant
+                //
+                // vY(t)  = a         * t
+                // vY(2s) = -9.81m/s² * 2s
+                //          = 19.62m/s
+                //
+                // vZ bleibt 0
+                () -> assertArrayEquals(
+                        new Vector3D(1, -19.62, 0).toArray(),
+                        resultObject.vel.toArray(),
+                        tolerance));
     }
 
+    /**
+     * Überprüft, dass die Kollisionsberechnung mit der Wand korrekt ausgeführt wird.
+     *
+     * Setzt voraus, dass calcAcceleration und applyMovement korrekt funktionieren
+     */
     @Test
     void handleWallCollision() {
+        Vector3D worldSize = new Vector3D(10, 10, 10);
+
+        // Kugel mit Radius 1m (Einheiten der Vektoren für Übersicht weggelassen):
+        // t = 0s
+        //      p = {8.5; 5; 5}
+        //      v = {0; 0; 0}
+        //      a = {1; 0; 0}
+        Shape testObject = new Sphere(
+                new Vector3D(8.5, 5, 5),
+                new Vector3D(0, 0, 0),
+                new Vector3D(1, 0, 0),
+                true, 1, 1, 1);
+        // Zeitpunkt der Kollision mit der Wand bei x=10m (Bewegungsgleichungen: p(t) = 0.5*a*t² + v0*t + p0; v(t) = a*t + v0)
+        // t = 1s
+        //      p = {9; 5; 5}
+        //      v = {1; 0; 0}
+        //      a = {1; 0; 0}
+        // Kugel wird auf diesen Zeitpunkt aktualisiert, danach wird erst die Kollisionserkennung ausgeführt
+        // t = 1.1s
+        //      p = {9.105; 5; 5}
+        //      v = {1.1; 0; 0}
+        //      a = {1; 0; 0}
+
+        // Gesamtbeschleunigung berechnen
+        Shape result1 = testObject.calcAcceleration(Vector3D.ZERO, 0, Lists.immutable.empty());
+        // Bewegungsgleichungen anwenden
+        Shape result2 = result1.applyMovement(1.1);
+        // Ausführung der Methode
+        Shape resultObject = result2.handleWallCollision(worldSize, result2);
+
+        // Durch CCD (continuous collision detection) muss erkannt worden sein, dass die Kollision zu t = 1s stattgefunden hat.
+        assertAll(
+                // Position muss angepasst werden, sodass die Kugel nicht in der Wand hängt: {9; 5; 5}
+                () -> assertArrayEquals(
+                        new Vector3D(9, 5, 5).toArray(),
+                        resultObject.pos.toArray(),
+                        tolerance),
+                // Geschwindigkeit muss negiert und auf den Betrag zurückgesetzt werden, den sie zur Kollisionszeit hatte,
+                // ansonsten würde sie nach der Kollision höher sein als vorher: {-1; 0; 0}
+                () -> assertArrayEquals(
+                        new Vector3D(-1, 0, 0).toArray(),
+                        resultObject.vel.toArray(),
+                        tolerance));
     }
 
+    /**
+     * Überprüft, dass Position und Geschwindigkeit bei Kollision von zwei Kugeln korrigiert werden.
+     *
+     * Setzt voraus TODO
+     */
     @Test
     void calcEntityCollisionCorrections() {
     }

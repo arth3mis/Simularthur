@@ -19,11 +19,12 @@ public class Sphere extends Shape {
     private Sphere(long id, Vector3D pos, Vector3D vel, Vector3D acc, Vector3D selfAcc, boolean movable, double radius, double density, double bounciness) {
         super(id, ShapeType.SPHERE, pos, vel, acc, selfAcc, movable, density * 4.0/3.0 * Math.PI * radius * radius * radius, density, bounciness);
         // radius >= 0 wird implizit im super() call abgesichert, da durch mass ~ radius³ die Masse negativ würde
-        // (oder bei Ausgleich durch negative Dichte der "density"-Assert anschlagen würde)
+        // (bei dennoch positiver Masse wegen negativer Dichte würde der "density"-Assert anschlagen)
         this.radius = radius;
     }
 
     Shape calcAcceleration(Vector3D gravity, double airDensity, ImmutableList<Shape> gravityEntities) {
+        assert World.isValidVector(gravity) && Double.isFinite(airDensity) && gravityEntities != null : "Beschleunigungsfaktoren müssen reell initialisiert sein";
         if (!movable) return this;
         // Die Beschleunigung durch massereiche Objekte wird näherungsweise als konstant in einem kleinen Zeitabschnitt angesehen
         Vector3D eGravity = gravityEntities.stream().filter(e -> !pos.equals(e.pos))
@@ -41,27 +42,22 @@ public class Sphere extends Shape {
 
     Shape applyMovement(double dt) {
         if (!movable) return this;
-//        System.out.println(vel);
         return new Sphere(id, pos.add(dt*dt, acc.scalarMultiply(0.5)).add(dt,vel), vel.add(dt, acc), acc, selfAcc, movable, radius, density, bounciness);
     }
 
     Shape handleWallCollision(Vector3D worldSize, Shape prev) {
         assert prev.id == id : "Das 'prev' Objekt muss der vorherige Zustand dieses Körpers sein";
-        Vector3D p = pos, v = vel, a = selfAcc;
-        // todo trace pColl like with entities (nicht pos._ fixen sondern ganzen vektor)
+        Vector3D p = pos, v = vel;
         // Jede Komponente einzeln auf Kollision testen
         for (int i = 0; i < 3; i++) {
             if (pos.toArray()[i] < radius || pos.toArray()[i] + radius > worldSize.toArray()[i]) {
-                // todo debug
-//                if (id == 1 && i == 1 && pos.getY() > 0.5)
-//                    System.out.print("");
                 // Position korrigieren, falls außerhalb des Bereichs
                 double pColl = pos.toArray()[i] < radius ? radius : worldSize.toArray()[i] - radius;
                 p = new Vector3D(i==0 ? pColl : p.getX(), i==1 ? pColl : p.getY(), i==2 ? pColl : p.getZ());
                 // Überschrittene Position kann auch zu überschrittener Geschwindigkeit führen, die korrigiert werden muss:
                 // Mithilfe des "prev" Zustands kann die tatsächliche Kollisionszeit berechnet werden (Umstellung mit PQ-Formel).
                 // pColl = 0.5*a*tColl² + v*tColl + p  (p,v,a sind Werte von prev)
-                // (PQ-Formel) => tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
+                // => tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
                 double tColl = prev.acc.toArray()[i] == 0 ? 0 : -(prev.vel.toArray()[i] / prev.acc.toArray()[i]) + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) - 2 * (prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
                 // Geschwindigkeitskorrektur und Invertierung der Komponente (Impulserhaltung: Keine Geschwindigkeit auf Wand "übertragbar", 100% Reflexion)
                 double v1 = prev.vel.add(tColl, prev.acc).toArray()[i] * bounciness
@@ -69,17 +65,13 @@ public class Sphere extends Shape {
                         * (Math.signum(prev.vel.add(tColl, prev.acc).toArray()[i]) == Math.signum(prev.vel.toArray()[i]) ? -1 : 1);
                 // Notfall-Berechnung, wenn andere Formel keinen reellen Wert ausgibt
                 if (!Double.isFinite(v1)) v1 = vel.toArray()[i] * -bounciness;
-                // Schwelle, um Zittern zu vermeiden todo keep or remove?
+                // Schwelle, um Zittern zu vermeiden
                 if (Math.abs(v1) < 0.00001) v1 = 0;
                 // Geschwindigkeitskomponente invertieren
                 v = new Vector3D(i==0 ? v1 : v.getX(), i==1 ? v1 : v.getY(), i==2 ? v1 : v.getZ());
-                // Eigenbeschleunigungskomponente auf 0 setzen
-                // (damit Eigenbeschleunigung nicht wie eine Gravitation, sondern eher wie ein Antrieb/Triebwerk funktioniert)
-                // todo change?
-                a = new Vector3D((i==0 ? 0 : a.getX()), (i==1 ? 0 : a.getY()), (i==2 ? 0 : a.getZ()));
             }
         }
-        return new Sphere(id, p, v, acc, a, movable, radius, density, bounciness);
+        return new Sphere(id, p, v, acc, selfAcc, movable, radius, density, bounciness);
     }
 
     Shape calcEntityCollisionCorrections(ImmutableList<Shape> entities, Shape prev) {
@@ -91,7 +83,6 @@ public class Sphere extends Shape {
                 .reduce(this, (a, b) -> {
                     // Position bei Kollision: Korrigiert die Hälfte des Abstands, andere Kugel "übernimmt" die andere Hälfte (wenn sie auch movable ist)
                     Vector3D pColl = a.pos.add(a.pos.subtract(b.pos).normalize().scalarMultiply(a.radius + b.radius - a.pos.subtract(b.pos).getNorm()).scalarMultiply(b.movable ? 0.5 : 1));
-                    //System.out.println(a.pos.subtract(pColl));// todo debug
                     // tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
                     double tColl = -(prev.vel.getNorm()/prev.acc.getNorm()) + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
                     // tColl ist NaN bei konstanter Geschwindigkeit, dann muss diese nicht korrigiert werden
@@ -111,7 +102,6 @@ public class Sphere extends Shape {
                 .reduce(this, (a, b) -> new Sphere(id, a.pos,
                         // Geschwindigkeit nach Kollision:
                         // v1' = (v1 + 2*m2/(m1+m2) * dot(v2-v1, p1-p2) / |p1-p2| * (p1-p2)) * bounciness
-                        // todo prevent NaN
                         a.vel.add(2*b.mass/(a.mass+b.mass) * b.vel.subtract(a.vel).dotProduct(a.pos.subtract(b.pos)) / a.pos.subtract(b.pos).getNormSq(), a.pos.subtract(b.pos)).scalarMultiply(bounciness),
                         a.acc, a.selfAcc, a.movable, a.radius, a.density, a.bounciness));
     }
@@ -123,9 +113,12 @@ public class Sphere extends Shape {
      * @return Stream der getroffenen Kugeln (nicht parallel, da es meistens nur eine Kollision gibt)
      */
     private static Stream<Sphere> getCollidingSpheres(Sphere s, ImmutableList<Shape> entities) {
-        // todo zero norm error in calcEntityCollisionCorrections when parallelStream-ing
         return entities.stream().filter(e -> e.type == ShapeType.SPHERE && !e.equals(s) && !s.pos.equals(e.pos))
                 // Toleranz (1 Nanometer), damit z.B. keine Kollision bei direkt aneinander liegenden Kugeln erkannt wird
                 .map(e -> (Sphere) e).filter(e -> s.pos.distance(e.pos) + 1.0e-9 < s.radius + e.radius);
+    }
+
+    public Shape manipulate(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double mass, double bounciness) {
+        return new Sphere(pos, vel, selfAcc, movable, radius, mass * 3.0/4.0 / Math.PI / radius/radius/radius, bounciness);
     }
 }

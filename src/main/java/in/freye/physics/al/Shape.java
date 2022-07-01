@@ -28,7 +28,7 @@ public abstract class Shape {
      * damit nur Manipulationen desselben Objekts dieselbe ID haben, keine neuen Körper
      */
     Shape(long id, ShapeType type, Vector3D pos, Vector3D vel, Vector3D acc, Vector3D selfAcc, boolean movable, double mass, double density, double bounciness) {
-        assert World.isValidVector(pos) && World.isValidVector(vel) && World.isValidVector(acc) && World.isValidVector(selfAcc) : "Die Position & Bewegung des Körpers muss reell definiert sein";
+        assert World.isValidVector(pos, vel, acc, selfAcc) : "Die Position & Bewegung des Körpers muss reell definiert sein";
         assert density > 0 && mass > 0 && Double.isFinite(density) && Double.isFinite(mass) : "Dichte & Masse eines Körpers müssen endlich positiv sein";
         assert bounciness >= 0 && bounciness <= 1 : "Die Reflexionsstärke muss zwischen 0 und 1 liegen, damit die Energieerhaltung nicht verletzt wird";
         // Wenn es ein neuer Körper ist, weise eine neue ID zu; ansonsten kopiere die bisherige ID
@@ -79,7 +79,11 @@ public abstract class Shape {
      */
     abstract Shape applyEntityCollisionDeflections(ImmutableList<Shape> detectEntities, ImmutableList<Shape> deflectionEntities/*, Shape prev*/);
 
-    //abstract Shape copy();
+    /**
+     * Gibt einen neuen Zustand des Körpers mit manipulierten Werten zurück.
+     * Die ID ändert sich jedoch, um Einmaligkeit der IDs im Raum zu garantieren
+     */
+    public abstract Shape manipulate(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double mass, double bounciness);
 
     /** Derselbe Körper kann zu unterschiedlichen Zeitpunkten existieren, deshalb ist er nur mit einer ID eindeutig identifizierbar */
     public boolean equals(Object obj) {

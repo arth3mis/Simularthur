@@ -17,7 +17,7 @@ public interface Physicable {
     /** Fügt einen oder mehrere Körper in die Welt ein */
     Physicable spawn(Shape... entities);
     /** Ersetzt Körper in der Welt (löscht, wenn null übergeben wird) */
-    Physicable replace(int atIndex, Shape entity);
+    Physicable replace(long id, Shape entity);
 
     /** Simuliert die Änderungen im System, die im Zeitschritt deltaTime (Einheit Sekunde) passieren */
     Physicable update(double deltaTime);

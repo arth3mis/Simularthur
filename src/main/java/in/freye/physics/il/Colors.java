@@ -9,7 +9,7 @@ enum Theme {
  * WLD = World
  */
 enum Colors {
-    CP_BACKGROUND(0xFFdddddd, 0xFF333333),
+    CP_BACKGROUND(0xFFdddddd, 0xFF272733),
     WLD_BACKGROUND(0xFFeeeeee, 0xFF000000),
     WLD_WALLS(0xFFeeeeee, 0xFF000000),
     // for earth-like style

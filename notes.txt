@@ -73,6 +73,9 @@ https://en.wikipedia.org/wiki/Physics_engine
     https://www.isaacsukin.com/news/2015/01/detailed-explanation-javascript-game-loops-and-timing
 (für IL)
     https://www.leifiphysik.de/mechanik/kreisbewegung/grundwissen/zentripetalkraft
+(IL bsp szenarien)
+    https://de.wikipedia.org/wiki/Poolbillard
+    https://billiards.colostate.edu/faq/speed/typical/
 ------------------ not used any longer (?) -----------------------------------------------------------------------------
 
 
