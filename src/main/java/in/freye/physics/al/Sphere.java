@@ -58,8 +58,12 @@ public class Sphere extends Shape {
                 // Mithilfe des "prev" Zustands kann die tatsächliche Kollisionszeit berechnet werden (Umstellung mit PQ-Formel).
                 // pColl = 0.5*a*tColl² + v*tColl + p  (p,v,a sind Werte von prev)
                 // => tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
-                double tColl = prev.acc.toArray()[i] == 0 ? 0 : -(prev.vel.toArray()[i] / prev.acc.toArray()[i]) + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) - 2 * (prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
-                // Geschwindigkeitskorrektur und Invertierung der Komponente (Impulserhaltung: Keine Geschwindigkeit auf Wand "übertragbar", 100% Reflexion)
+                //    Zur Vermeidung von Wurzeln aus negativen Zahlen: (Anwendbar, da mit Beträgen gerechnet wird)
+                //    tColl = -(v/a) + sqrt((v/a)² + 2(|p-pColl|)/a)
+                double tColl = prev.acc.toArray()[i] == 0 ? 0 : -(prev.vel.toArray()[i] / prev.acc.toArray()[i])
+                        + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) + 2 * Math.abs(prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
+                // Geschwindigkeitskorrektur und Invertierung der Komponente
+                // (Impulserhaltung: Keine Geschwindigkeit auf Wand "übertragbar" -> 100% Reflexion)
                 double v1 = prev.vel.add(tColl, prev.acc).toArray()[i] * bounciness
                         // Nur invertieren, wenn die Komponente nicht schon durch die Beschleunigung invertiert wurde
                         * (Math.signum(prev.vel.add(tColl, prev.acc).toArray()[i]) == Math.signum(prev.vel.toArray()[i]) ? -1 : 1);
@@ -81,10 +85,16 @@ public class Sphere extends Shape {
         return getCollidingSpheres(this, entities)
                 // Auswirkungen der Kollisionen auf "this" anwenden
                 .reduce(this, (a, b) -> {
-                    // Position bei Kollision: Korrigiert die Hälfte des Abstands, andere Kugel "übernimmt" die andere Hälfte (wenn sie auch movable ist)
-                    Vector3D pColl = a.pos.add(a.pos.subtract(b.pos).normalize().scalarMultiply(a.radius + b.radius - a.pos.subtract(b.pos).getNorm()).scalarMultiply(b.movable ? 0.5 : 1));
+                    // Position bei Kollision: Korrigiert die Hälfte des Abstands,
+                    // die andere Kugel "übernimmt" die andere Hälfte (wenn sie auch movable ist)
+                    Vector3D pColl = a.pos.add(a.pos.subtract(b.pos).normalize()
+                            .scalarMultiply(a.radius + b.radius - a.pos.subtract(b.pos).getNorm())
+                            .scalarMultiply(b.movable ? 0.5 : 1));
                     // tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
-                    double tColl = -(prev.vel.getNorm()/prev.acc.getNorm()) + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
+                    // Zur Vermeidung von Wurzeln aus negativen Zahlen: (Anwendbar, da mit Beträgen gerechnet wird)
+                    // tColl = -(v/a) + sqrt((v/a)² + 2(|p-pColl|)/a)
+                    double tColl = -(prev.vel.getNorm()/prev.acc.getNorm())
+                            + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) + 2 * Math.abs(prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
                     // tColl ist NaN bei konstanter Geschwindigkeit, dann muss diese nicht korrigiert werden
                     return new Sphere(id, pColl, Double.isNaN(tColl) ? vel : prev.vel.add(tColl, prev.acc), a.acc, a.selfAcc, a.movable, a.radius, a.density, a.bounciness);
                 });
@@ -96,13 +106,13 @@ public class Sphere extends Shape {
         // (benötigt weniger Rechenaufwand als mehrfache Korrekturberechnungen, daher wurden diese in eigene Funktion ausgelagert)
         return getCollidingSpheres((Sphere) detectEntities.select(this::equals).getAny(), detectEntities)
                 .map(e -> (Sphere) deflectionEntities.select(e::equals).getAny())
-                // todo orthogonale Zerlegung von selfAcc: der Teil parallel zum Vektor (b.pos-a.pos) wird 0 (-> Hintergrund: siehe handleWallCollision)
-                //  test and think through:
-                //  a.selfAcc.subtract(b.pos.subtract(a.pos).scalarMultiply(a.selfAcc.dotProduct(b.pos.subtract(a.pos)) / b.pos.subtract(a.pos).getNormSq())),
                 .reduce(this, (a, b) -> new Sphere(id, a.pos,
                         // Geschwindigkeit nach Kollision:
                         // v1' = (v1 + 2*m2/(m1+m2) * dot(v2-v1, p1-p2) / |p1-p2| * (p1-p2)) * bounciness
-                        a.vel.add(2*b.mass/(a.mass+b.mass) * b.vel.subtract(a.vel).dotProduct(a.pos.subtract(b.pos)) / a.pos.subtract(b.pos).getNormSq(), a.pos.subtract(b.pos)).scalarMultiply(bounciness),
+                        // falls b immovable ist, wird kein Massenverhältnis berechnet
+                        a.vel.add((b.movable ? 2*b.mass/(a.mass+b.mass) : 2)
+                                * b.vel.subtract(a.vel).dotProduct(a.pos.subtract(b.pos))
+                                / a.pos.subtract(b.pos).getNormSq(), a.pos.subtract(b.pos)).scalarMultiply(bounciness),
                         a.acc, a.selfAcc, a.movable, a.radius, a.density, a.bounciness));
     }
 
@@ -114,8 +124,8 @@ public class Sphere extends Shape {
      */
     private static Stream<Sphere> getCollidingSpheres(Sphere s, ImmutableList<Shape> entities) {
         return entities.stream().filter(e -> e.type == ShapeType.SPHERE && !e.equals(s) && !s.pos.equals(e.pos))
-                // Toleranz (1 Nanometer), damit z.B. keine Kollision bei direkt aneinander liegenden Kugeln erkannt wird
-                .map(e -> (Sphere) e).filter(e -> s.pos.distance(e.pos) + 1.0e-9 < s.radius + e.radius);
+                // Toleranz (0.1 Nanometer), damit z.B. keine Kollision bei direkt aneinander liegenden Kugeln erkannt wird
+                .map(e -> (Sphere) e).filter(e -> s.pos.distance(e.pos) + 1.0e-10 < s.radius + e.radius);
     }
 
     public Shape manipulate(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double mass, double bounciness) {

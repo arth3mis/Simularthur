@@ -1,6 +1,8 @@
 package in.freye.physics.al;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 
@@ -28,6 +30,8 @@ public class World implements Physicable {
      *  = (0,001m/s²)/(6,674e-11Nm²/kg²)*(1m²) = 14.983.518,13 kg ≈ 1,4984e7 kg
      */
     private static final double GRAVITY_SIGNIFICANT_MASS = 1.4984e7;
+
+    private static final Logger LOGGER = LogManager.getLogger("monitoring");
 
     /**
      * Factory-Methode:

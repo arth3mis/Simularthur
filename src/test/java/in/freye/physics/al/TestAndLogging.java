@@ -4,15 +4,10 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.util.Arrays;
-import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,20 +22,10 @@ class Helper {
         // density = m * 3/4 / π / r³
         return mass * 3.0/4.0 / Math.PI / radius/radius/radius;
     }
-
-//    static double[] roundAll(double[] nums, int precision) {
-//        return Arrays.stream(nums).map(d -> round(d, precision)).toArray();
-//    }
-//
-//    static double round(double num, int precision) {
-//        DecimalFormat df = new DecimalFormat("#." + "#".repeat(precision), new DecimalFormatSymbols(Locale.ENGLISH));
-//        df.setRoundingMode(RoundingMode.HALF_UP);
-//        return Double.parseDouble(df.format(num));
-//    }
 }
 
 /**
- * Testet die AL über das Interface
+ * Testet die AL über das Interface.
  */
 class PhysicableTest {
 
@@ -53,10 +38,10 @@ class PhysicableTest {
      *
      * Der Raum hat ein beispielhaftes Genauigkeitsversprechen von 60 Hertz,
      * d.h. der minimale intern simulierte Zeitschritt ist 1/60s.
-     * Längere Simulationszeiten werden iterativ kleinschrittig ausgeführt.
+     * Längere Simulationszeiten werden (intern) iterativ kleinschrittig ausgeführt.
      *
      * Die Toleranz wird auf 1 Nanometer eingestellt,
-     * um Problemen mit Floating-Point vorzubeugen, da double-Werte verglichen werden.
+     * um Problemen mit der Floating-Point-Präzision vorzubeugen, da double-Werte verglichen werden.
      */
     @BeforeEach
     void setup() {
@@ -67,7 +52,7 @@ class PhysicableTest {
 
     /**
      * Überprüft, dass allgemeine Gravitation des Raums korrekt auf Position und Geschwindigkeit eines Objekts wirkt
-     * (auch, wenn das Objekt bereits eine Geschwindigkeit hat)
+     * (auch, wenn das Objekt bereits eine Geschwindigkeit hat).
      */
     @Test
     @DisplayName("Raum-Gravitation wirkt korrekt auf bereits bewegtes Objekt")
@@ -112,7 +97,7 @@ class PhysicableTest {
     }
 
     /**
-     * Überprüft, dass sich bei beschleunigter Bewegung und Strömungswiderstand nach einiger Zeit eine konstante Geschwindigkeit einstellt
+     * Überprüft, dass sich bei beschleunigter Bewegung und Strömungswiderstand nach einiger Zeit eine konstante Geschwindigkeit einstellt.
      */
     @Test
     @DisplayName("Strömungswiderstand wirkt korrekt auf beschleunigtes Objekt")
@@ -148,7 +133,7 @@ class PhysicableTest {
 
     /**
      * Überprüft, dass die Kollision mit den Wänden korrekt funktioniert
-     * (auch, wenn die Geschwindigkeit nicht konstant ist)
+     * (auch, wenn die Geschwindigkeit nicht konstant ist).
      */
     @Test
     @DisplayName("Beschleunigtes Objekt kollidiert korrekt mit Raumgrenze")
@@ -193,7 +178,7 @@ class PhysicableTest {
      * Überprüft korrekte Kollision zwischen zwei Kugeln:
      *  - Frontalkollision, verschiedene Massen (testet Impulserhaltung)
      *  - versetzte Positionen, gleiche Massen (testet Reflexionswinkel).
-     * Die Aufspaltung in zwei Teil-Tests ermöglicht intuitivere, leichter berechenbare erwartete Werte
+     * Die Aufspaltung in zwei Teil-Tests ermöglicht intuitivere, leichter berechenbare erwartete Werte.
      */
     @Test
     @DisplayName("Korrekte Kollisionen zwischen zwei Kugeln")
@@ -337,7 +322,7 @@ class SphereTest {
 
     /**
      * Die Toleranz wird auf 1 Nanometer eingestellt,
-     * um Problemen mit Floating-Point vorzubeugen, da double-Werte verglichen werden.
+     * um Problemen mit der Floating-Point-Präzision vorzubeugen, da double-Werte verglichen werden.
      */
     @BeforeEach
     void setup() {
@@ -439,6 +424,7 @@ class SphereTest {
      */
     @Test
     void handleWallCollision() {
+        // Raumgröße festlegen
         Vector3D worldSize = new Vector3D(10, 10, 10);
 
         // Kugel mit Radius 1m (Einheiten der Vektoren für Übersicht weggelassen):
@@ -487,23 +473,187 @@ class SphereTest {
     /**
      * Überprüft, dass Position und Geschwindigkeit bei Kollision von zwei Kugeln korrigiert werden.
      *
-     * Setzt voraus TODO
+     * Setzt voraus, dass calcAcceleration und applyMovement korrekt funktionieren
      */
     @Test
     void calcEntityCollisionCorrections() {
+        // Kugeln, die sich beschleunigt aufeinander zu bewegen
+        Shape testObject1 = new Sphere(
+                new Vector3D(0, 0, 0),
+                new Vector3D(1, 0, 0),
+                new Vector3D(1, 0, 0),
+                true, 1, 1, 1);
+        Shape testObject2 = new Sphere(
+                new Vector3D(4.9, 0, 0),
+                new Vector3D(-1, 0, 0),
+                new Vector3D(-1, 0, 0),
+                true, 1, 1, 1);
+
+        // deltaP(1s) = 0.5 * a * t² + v0 * t
+        //            = 0.5 * 1m/s² * (1s)² + 1m/s * 1s
+        //            = 1.5m
+        // deltaV(1s) = a * t
+        //            = 1m/s² * 1s
+        //            = 1m/s
+        // Beide Kugeln haben diese Strecken- und Geschwindigkeitsänderung, nur in entgegengesetzte Richtung.
+        // Nach 1s ist Kugel 1 bei pX = 1.5m, mit vX = 2m/s.
+        // Nach 1s ist Kugel 2 bei pX = 3.4m, mit vX = -2m/s.
+        // (pX2 - pX1) = 1.9m < 2m = (r1 + r2)
+        // -> Die Kugeln liegen ineinander und müssen vor dem Stoß korrigiert werden
+
+        // Gesamtbeschleunigung berechnen
+        Shape resultA1 = testObject1.calcAcceleration(Vector3D.ZERO, 0, Lists.immutable.empty());
+        Shape resultA2 = testObject2.calcAcceleration(Vector3D.ZERO, 0, Lists.immutable.empty());
+        // Bewegungsgleichungen anwenden
+        Shape resultB1 = resultA1.applyMovement(1);
+        Shape resultB2 = resultA2.applyMovement(1);
+        // Ausführung der Methode
+        Shape resultObject1 = resultB1.calcEntityCollisionCorrections(Lists.immutable.of(resultB2), resultA1);
+        Shape resultObject2 = resultB2.calcEntityCollisionCorrections(Lists.immutable.of(resultB1), resultA2);
+
+        assertAll(
+                // Positionen werden je zur Hälfte korrigiert, demnach ist mit Überlappung von 0.1m
+                // pX1' = 1.5m - 0.05m = 1.45m
+                // pX2' = 3.4m + 0.05m = 3.45m
+                () -> assertArrayEquals(
+                        new Vector3D(1.45, 0, 0).toArray(),
+                        resultObject1.pos.toArray(),
+                        tolerance),
+                () -> assertArrayEquals(
+                        new Vector3D(3.45, 0, 0).toArray(),
+                        resultObject2.pos.toArray(),
+                        tolerance),
+                // Geschwindigkeiten werden auf den Betrag zurückgesetzt, den sie zur Kollisionszeit hatten
+                // tColl = -(v/a) + sqrt((v/a)² + 2(|p-pColl|)/a)
+                //       = 0.974841766s
+                // vX1' = vX1(0s) + aX1   * tColl
+                //      = 1m/s    + 1m/s² * 0.974841766s
+                //      = 1.9748417658m/s
+                // vX2' = vX2(0s) + aX2    * tColl
+                //      = -1m/s   + -1m/s² * 0.974841766s
+                //      = -1.9748417658m/s
+                () -> assertArrayEquals(
+                        new Vector3D(1.9748417658, 0, 0).toArray(),
+                        resultObject1.vel.toArray(),
+                        tolerance),
+                () -> assertArrayEquals(
+                        new Vector3D(-1.9748417658, 0, 0).toArray(),
+                        resultObject2.vel.toArray(),
+                        tolerance));
+    }
+
+    /**
+     * Überprüft, dass auf zwei Kugeln, die sich unmittelbar in einer Kollisionssituation befinden,
+     * unabhängig korrekte Berechnungen für die Geschwindigkeiten nach dem Stoß berechnet werden.
+     */
+    @Test
+    void applyEntityCollisionDeflections() {
+        // 2 kollidierende Kugeln
+        Shape testObject1 = new Sphere(
+                // Verschiebung um 0.2 Nanometer, um außerhalb der Detektions-Toleranz von 0.1nm zu liegen
+                new Vector3D(0.0000000002, 0, 0),
+                new Vector3D(1, 0, 0),
+                Vector3D.ZERO,
+                true, 1, 1, 1);
+        Shape testObject2 = new Sphere(
+                // Da die Radien sich zu 2m addieren, ist die Aufteilung auf x und y bei einem 45°-Winkel einfach:
+                new Vector3D(Math.sqrt(2), Math.sqrt(2), 0),
+                new Vector3D(-1, 0, 0),
+                Vector3D.ZERO,
+                true, 1, 1, 1);
+
+        // Liste erstellen
+        ImmutableList<Shape> entities = Lists.immutable.of(testObject1, testObject2);
+        // Ausführung der Methode
+        Shape resultObject1 = testObject1.applyEntityCollisionDeflections(entities, entities);
+        Shape resultObject2 = testObject2.applyEntityCollisionDeflections(entities, entities);
+
+        assertAll(
+                // Die Geschwindigkeiten haben einen Winkel von 45° zum Abstandsvektor zwischen den Mittelpunkten.
+                // Daraus und aus der identischen Masse der Kugeln resultiert,
+                // dass diese bei der Kollision um 90° abgelenkt werden.
+                // Die Kugeln fliegen dann antiparallel auseinander, aber in y-Richtung statt in x-Richtung.
+                () -> assertArrayEquals(
+                        new Vector3D(0, -1, 0).toArray(),
+                        resultObject1.vel.toArray(),
+                        tolerance),
+                () -> assertArrayEquals(
+                        new Vector3D(0, 1, 0).toArray(),
+                        resultObject2.vel.toArray(),
+                        tolerance)
+        );
     }
 
     @Test
-    void applyEntityCollisionDeflections() {
+    void debugForLogging() {
+        // 2 kollidierende Kugeln
+        Shape testObject1 = new Sphere(
+                new Vector3D(6.0000000002, 1.5, 0),
+                new Vector3D(1, -1, 0),
+                Vector3D.MINUS_J,
+                true, 1, 1, 1);
+        Shape testObject2 = new Sphere(
+                new Vector3D(8, 1.5, 0),
+                Vector3D.ZERO,
+                Vector3D.ZERO,
+                false, 1, 1, 1);
+
+        // Liste erstellen
+        ImmutableList<Shape> entities = Lists.immutable.of(testObject1, testObject2);
+        // Ausführung der Methode
+        Shape resultObject1 = testObject1.applyEntityCollisionDeflections(entities, entities);
+        Shape resultObject2 = testObject2.applyEntityCollisionDeflections(entities, entities);
+
+//        System.out.println(resultObject1.pos);
+//        System.out.println(resultObject2.pos);
+//        System.out.println(resultObject1.vel);
+//        System.out.println(resultObject2.vel);
+
+        // todo ziemlich ungenau, was tun
+        Physicable w1 = World.create(10, new Vector3D(10, 10, 10))
+                .setGravity(new Vector3D(0, -1, 0));
+        Shape[] shapes = {
+                w1.at(new Vector3D(5, 3, 2))
+                        .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
+                        .newSphere(1, 1, 1),
+                w1.at(new Vector3D(8, 2.5, 2))
+                        .immovable()
+                        .newSphere(1, 1)
+        };
+        w1 = w1.spawn(shapes).update(2);
+        System.out.println(w1.getEntities()[0].pos);
+        System.out.println(w1.getEntities()[0].vel);
+        w1 = w1.update(1);
+        System.out.println(w1.getEntities()[0].pos);
+        System.out.println(w1.getEntities()[0].vel);
     }
 }
 
 
+/**
+ * Erzeugt eine Simulation, die mithilfe von Monitoring nachvollzogen werden kann.
+ *
+ * Dass Monitoring muss in der Datei "log4j2.xml" eingeschaltet werden
+ */
 class Logging {
 
     private static final Logger LOGGER = LogManager.getLogger("monitoring");
 
     public static void main(String[] args) {
         LOGGER.info("Starte Simulation: Waagerechter Wurf mit Kollisionen");
+
+        // Welt mit Gravitation erschaffen
+        Physicable w0 = World.create(10, new Vector3D(10, 10, 10))
+                .setGravity(new Vector3D(0, 1, 0));
+        // todo see if this is okay or just AL method logging
+//        LOGGER.info("Neue Welt mit Eigenschaften: Größe = {}, Gravitation = {}, Luftdichte = {})", w0.getSize(), w0.getGravity(), w0.getAirDensity());
+        // Kugeln erschaffen
+        Physicable w1 = w0.spawn(
+                w0.at(new Vector3D(5, 1, 0))
+                        .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
+                        .newSphere(1, 1, 1),
+                w0.at(new Vector3D(6, 0.5, 0))
+                        .immovable()
+                        .newSphere(1, 1));
     }
 }
