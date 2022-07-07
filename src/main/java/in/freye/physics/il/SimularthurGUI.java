@@ -12,8 +12,8 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 import java.util.stream.DoubleStream;
@@ -50,13 +50,16 @@ public class SimularthurGUI extends PApplet {
     Physicable world;
     float scale = 1;
     double simSpeed = 0;
-    double timeStep = 1/60.0;
     double updateFreq = 1000;
 
     // Variablen (Verbindung Simulation & Display)
-    Physicable worldSimStart;  // todo for reset button, reset to t=0
-    Future<Physicable> braveNewWorld;
-    boolean calculating = true;  // todo green/red light indicating if sim is computed in real-time or not
+    double timeToSimulate;
+    double timeSinceStart;
+    long timeLastUpdate;
+    Physicable worldSimStart;
+    // todo maybe overwrite var to indicate when bnw is thrown away bc template load/reset (and make spawn queue that executes when no async is running)
+    List<WorldEdit> worldEdits;
+    CompletableFuture<Physicable> braveNewWorld;  // todo green/red light indicating if sim is computed in real-time or not
     // Zusatzdaten für Verbindung
     Map<Long, Entity> entities;
 
@@ -139,7 +142,7 @@ public class SimularthurGUI extends PApplet {
 
         resetColors();
         resetWorld();
-        resetView();
+        resetView(world.getSize());
 
         // Globale Knöpfe (nicht Teil eines Panes)
         // dynamicRef sind global verfügbare Koordinaten
@@ -162,13 +165,21 @@ public class SimularthurGUI extends PApplet {
         startPane = new CPPane(null);
 //        startPane.add(new Label(() -> stringRes("testString"), 16, 0, 0, 0));
 
+        float fs = stdH * 0.8f;
+
         // *=btn; -=lb; °=chb; _=input
+        Label timeInfo = new Label(fs, () -> "Simulierte Zeit:", 0, 0, 0);
+        Label timeInfo2 = new Label(stdH * 0.6f, () -> formatTime(timeSinceStart), 5, 0, 10);
+        timeInfo2.font = createFont("Monospaced", stdH * 0.6f, true);
+        startPane.add(timeInfo);
+        startPane.add(timeInfo2);
+        // *SimSettings
         // *Ansicht
-        Button view = new Button(0, stdH, () -> stringRes("view"), 0, 10, 0);
+        Button view = new Button(0, stdH, () -> stringRes("view"), 30, 0, 0);
         startPane.add(view);
         CPPane viewPane = view.newChild();
             // -walls
-        Label walls = new Label(stdH*0.8f, () -> stringRes("walls"), 10, 10, 0);
+        Label walls = new Label(fs, () -> stringRes("walls"), 0, 0, 0);
         viewPane.add(walls);
                 // -id (1-6): "left/up/front/..."
                 // _id
@@ -198,8 +209,8 @@ public class SimularthurGUI extends PApplet {
         boxSideVisible = new int[]{0,0,0,0,0,0};
     }
 
-    void resetView() {
-        scale = (float) (100 / Arrays.stream(world.getSize().toArray()).max().orElse(1));
+    void resetView(Vector3D size) {
+        scale = (float) (100 / Arrays.stream(size.toArray()).max().orElse(1));
         camCenter.set(0,0,0);
         distance = stdDistance;
         yaw = stdYaw;
@@ -209,27 +220,57 @@ public class SimularthurGUI extends PApplet {
 
     void resetWorld() {
         entities = new HashMap<>();
+        worldEdits = new ArrayList<>();
+        worldSimStart = World.create(updateFreq, new Vector3D(1,1,1));
+        resetToStartWorld();
+    }
 
-        world = World.create(updateFreq, new Vector3D(1,1,1))
-                .setGravity(new Vector3D(0, -9.81, 0))
-                .setAirDensity(1.2);
+    void spawn() {
 
-        // Einzelner Ball
-        Shape s = world.at(new Vector3D(0.5, 0.5, 0.5))
-                //.withVelocityAndAccel(new Vector3D(0,0,0), new Vector3D(0,0,0))
-                .newSphere(0.2, 1, 1);
-        world = world.spawn(s);
-        entities.put(s.id, new Entity(s, color(255,0,0)));
+    }
 
-        // todo stop time on load template
-        //world = templatePoolTable(false);
-        world = templateStarWithOrbit(0);
+    void loadTemplate(Supplier<Physicable> w) {
+        setSimSpeed(0);
+        worldSimStart = w.get();
+        worldEdits.add(new WorldSet(w.get(), () -> {
+            resetSimulatedTime();
+            resetView(w.get().getSize());
+        }));
+    }
 
-        worldSimStart = world;
+    void resetToStartWorld() {
+        worldEdits.add(new WorldSet(worldSimStart, this::resetSimulatedTime));
+        if (braveNewWorld == null)
+            applyWorldEdits();
     }
 
     void resetSimulatedTime() {
-        world = worldSimStart;
+        timeSinceStart = 0;
+        timeToSimulate = 0;
+    }
+
+    String formatTime(double t) {
+        boolean b = false;
+        String s = "";
+        t += 25*3600;
+        if (t >= 24*3600) {
+            s += (int) Math.floor(t/24/3600) + " days ";
+            t %= 24*3600;
+            b = true;
+        }
+        if (t >= 3600 || b) {
+            s += (int) Math.floor(t/3600) + "h ";
+            t %= 3600;
+            b = true;
+        }
+        if (t >= 60 || b) {
+            s += (int) Math.floor(t/60) + "min ";
+            t %= 60;
+        }
+        s += (int) Math.floor(t) + "s ";
+        String ms = fmt.format(Math.round(t*1000%1000));
+        s += "0".repeat(max(3-ms.length(), 0)) + ms + "ms";
+        return s;
     }
 
     double calcSphereDensity(double radius, double mass) {
@@ -265,15 +306,45 @@ public class SimularthurGUI extends PApplet {
         if (moveCam[2]) camCenter.add(cos(pitch)*cosYaw * factor,0,-sin(pitch)*cosYaw * factor);
         if (moveCam[3]) camCenter.sub(cos(pitch)*cosYaw * factor,0,-sin(pitch)*cosYaw * factor);
 
-        // todo update parallel (not threads, wrapper classes)
-        if (!calculating) {
-            CompletableFuture<Physicable> cf = new CompletableFuture<>();
-            Executors.newSingleThreadExecutor().submit(() -> {
-                cf.complete(world.update(timeStep * simSpeed));
-            });
+        // Ergebnis der asynchronen Berechnung?
+        if (braveNewWorld != null && braveNewWorld.isDone()) {
+            try {
+                if (!braveNewWorld.isCancelled())
+                    world = braveNewWorld.get();
+            } catch (InterruptedException | ExecutionException ignored) {
+            }
+            braveNewWorld = null;
         }
-        if (simSpeed != 0)
-            world = world.update(timeStep * simSpeed);
+        // Änderungen aus Liste anwenden, während keine asynchrone Änderung läuft
+        if (braveNewWorld == null)
+            applyWorldEdits();
+        // Zeit fortschreiten
+        if (simSpeed > 0) {
+            long t = System.nanoTime();
+            timeToSimulate += (t - timeLastUpdate) / 1.0e9;
+            timeSinceStart += (t - timeLastUpdate) / 1.0e9;
+            timeLastUpdate = t;
+            // Nächste Berechnung asynchron starten?
+            if (braveNewWorld == null) {
+                final double time = timeToSimulate;
+                braveNewWorld = new CompletableFuture<>();
+                Executors.newCachedThreadPool().submit(() -> {
+                    braveNewWorld.complete(world.update(time));
+                    braveNewWorld.thenRun(() -> timeToSimulate -= time);
+                });
+            }
+        }
+    }
+
+    void applyWorldEdits() {
+        world = worldEdits.stream().reduce(world, (w, we) -> we.apply(w), (w1, w2) -> w2);
+        worldEdits.clear();
+    }
+
+    void setSimSpeed(double d) {
+        if (simSpeed == 0 && d != 0)
+            timeLastUpdate = System.nanoTime();
+        simSpeed = d;
     }
 
     @Override
@@ -507,6 +578,39 @@ public class SimularthurGUI extends PApplet {
         }
     }
 
+    interface WorldEdit {
+        Physicable apply(Physicable target);
+    }
+    static class WorldSet implements WorldEdit {
+        Physicable world;
+        Runnable settings;
+        WorldSet(Physicable newWorld, Runnable adjustments) {
+            if (newWorld != null)
+                world = newWorld;
+            settings = adjustments;
+        }
+        @Override
+        public Physicable apply(Physicable target) {
+            settings.run();
+            return world;
+        }
+    }
+    class WorldSpawn implements WorldEdit {
+        List<Shape> shapes = new ArrayList<>();
+        List<Entity> ent = new ArrayList<>();
+        WorldSpawn add(Shape s, int color, int trailLength) {
+            shapes.add(s);
+            ent.add(new Entity(s, color, trailLength));
+            return this;
+        }
+        @Override
+        public Physicable apply(Physicable target) {
+            assert !shapes.isEmpty() && shapes.size() == entities.size();
+            ent.forEach(e -> entities.put(e.id, e));
+            return target.spawn(shapes.toArray(new Shape[0]));
+        }
+    }
+
     // GUI Elemente
     class CPPane {
         CPItem caller;
@@ -576,6 +680,9 @@ public class SimularthurGUI extends PApplet {
         Label(float fontSize, Supplier<String> text, float marginTop, float marginBottom, float paddingLeft) {
             super(0, fontSize, fontSize);
             this.text = text;
+            mt = marginTop;
+            mb = marginBottom;
+            pl = paddingLeft;
         }
 
         @Override
@@ -584,7 +691,7 @@ public class SimularthurGUI extends PApplet {
             fill(Colors.CP_LB_TEXT.get(theme));
             textFont(font);
             textAlign(LEFT, TOP);
-            text(text.get(), refX, refY);
+            text(text.get(), pl+refX, refY);
             popMatrix(); popStyle();
         }
     }
@@ -742,15 +849,16 @@ public class SimularthurGUI extends PApplet {
         }
 
         switch (key) {
-            case 'r' -> resetView();
+            case 'r' -> resetView(world.getSize());
             case 'c' -> camLight = !camLight;
             case 'i' -> drawId = !drawId;
-            case BACKSPACE -> resetSimulatedTime();
-            case ' ' -> simSpeed = simSpeed == 0 ? 1 : 0;
+            case BACKSPACE -> resetToStartWorld();
+            case ' ' -> setSimSpeed(simSpeed == 0 ? 1 : 0);
             case 't' -> theme = Theme.values()[1 - theme.ordinal()];
             // debug
             case 'h' -> helpShown = true;
-            case 'l' -> resetWorld();
+            case 'k' -> resetWorld();
+            case 'l' -> loadTemplate(this::templateLoggingScenario);
             // /debug
             case CODED -> {
                 switch (keyCode) {
@@ -815,7 +923,6 @@ public class SimularthurGUI extends PApplet {
     // Vordefinierte Beispiel-Szenarien, die geladen werden können
     //
 
-    /** Billard-Tisch */
     Physicable templatePoolTable(boolean randomStartSpeed) {
         // Billard
         // Standard: neun Fuß Tisch (254cm x 127cm), Kugeln: 57.2mm Durchmesser, 170g
