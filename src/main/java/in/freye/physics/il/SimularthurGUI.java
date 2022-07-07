@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import java.util.function.Supplier;
+import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 
 public class SimularthurGUI extends PApplet {
@@ -176,6 +177,10 @@ public class SimularthurGUI extends PApplet {
             // °scales
             // -sphere detail (3-60; std=30)
             // _sphere detail
+        // -objekt per id
+        // _id
+        // *Objekteigenschaften anpassen
+        // todo siehe handy
         // *neues Objekt
             // -manuell
             // ... (°random pos...)
@@ -218,7 +223,7 @@ public class SimularthurGUI extends PApplet {
 
         // todo stop time on load template
         //world = templatePoolTable(false);
-        world = templateLoggingScenario();
+        world = templateStarWithOrbit(0);
 
         worldSimStart = world;
     }
@@ -859,6 +864,19 @@ public class SimularthurGUI extends PApplet {
         w1 = w1.spawn(stars);
         entities.put(stars[0].id, new Entity(stars[0], color(249, 215, 28)));
         entities.put(stars[1].id, new Entity(stars[1], color(40, 122, 184)));
+        return w1;
+    }
+
+    Physicable templateGravityBouncing() {
+        final Physicable world = World.create(updateFreq, new Vector3D(1, 1, 1))
+                .setGravity(new Vector3D(0, -9.81, 0));
+        Physicable w1 = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
+                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, 1)))
+                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+//        w1 = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
+//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
+//                .reduce(w1, (a, b) -> a.spawn(b.getEntities()));
+        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(20,0,random(200,250)))));
         return w1;
     }
 

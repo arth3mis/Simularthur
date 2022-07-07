@@ -45,8 +45,9 @@ public class World implements Physicable {
     }
 
     private World(double updateFrequency, Vector3D size, Vector3D gravity, double airDensity, ImmutableList<Shape> entities) {
-        assert isValidVector(size, gravity) && entities != null : "Die Werte müssen initialisiert sein";
+        assert isValidVector(size, gravity) && entities != null : "Die Eigenschaften müssen initialisiert sein";
         assert DoubleStream.of(size.toArray()).allMatch(d -> d > 0) : "Der Raum muss ein realer Quader sein";
+        assert updateFrequency > 0 : "Der minimale Update-Schritt muss positiv sein";
         this.updateFreq = updateFrequency;
         this.size = size;
         this.gravity = gravity;
