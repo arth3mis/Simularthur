@@ -6,12 +6,14 @@ import org.apache.logging.log4j.Logger;
 import org.eclipse.collections.api.list.ImmutableList;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public class Sphere extends Shape {
 
-    public final double radius;
-    private static final Logger LOGGER = LogManager.getLogger("monitoring");
+    private final double radius;
+
+    private static final Logger LOGGER = LogManager.getLogger("monitoring");  // todo make global in al.java
 
     Sphere(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double radius, double density, double bounciness) {
         this(Shape.NO_ID, pos, vel, Vector3D.ZERO, selfAcc, movable, radius, density, bounciness);
@@ -141,7 +143,8 @@ public class Sphere extends Shape {
                 .map(e -> (Sphere) e).filter(e -> s.pos.distance(e.pos) + 1.0e-10 < s.radius + e.radius);
     }
 
-    public Shape manipulate(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double mass, double bounciness) {
-        return new Sphere(pos, vel, selfAcc, movable, radius, mass * 3.0/4.0 / Math.PI / radius/radius/radius, bounciness);
+    @Override
+    public Object[] getTypeData() {
+        return new Object[]{ radius };
     }
 }

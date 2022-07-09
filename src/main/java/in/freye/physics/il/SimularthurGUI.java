@@ -96,12 +96,14 @@ public class SimularthurGUI extends PApplet {
     float stdH = cpToolbarH/2;
     PFont stdFont;
     DecimalFormat fmt;
+    int vecPrec = 4;
     boolean helpShown = false;
     Button cpBtnExpand, cpBtnHelp;
     Button cpLangDe, cpLangEn;
     List<Button> globalButtons;
     CPPane startPane, currentPane;
     TextField currentInput;
+    Spawnable currentEntity; // todo live value update in CP when not null
 
     // Ressourcen
     final String STRINGS_PATH = "in.freye.physics.il.Strings";
@@ -113,7 +115,10 @@ public class SimularthurGUI extends PApplet {
     void setLanguage(int index) {
         lang = SUPPORTED_LANGUAGES[index];
         fmt = (DecimalFormat) DecimalFormat.getInstance(lang);
+        fmt.applyPattern("0.#");
+        fmt.setMaximumFractionDigits(Integer.MAX_VALUE);
         fmt.setMinimumFractionDigits(0);
+        fmt.setGroupingUsed(false);
     }
     final Map<Locale, ResourceBundle> STRINGS = new HashMap<>();
     private String stringRes(String key) {
@@ -166,30 +171,35 @@ public class SimularthurGUI extends PApplet {
         startPane = new CPPane(null);
 //        startPane.add(new Label(() -> stringRes("testString"), 16, 0, 0, 0));
 
-        float fs = stdH * 0.8f;
-        float iw = cpWidth * 0.6f;
+        float fs1 = stdH * 0.9f;
+        float fs2 = stdH * 0.8f;
+        float fs3 = stdH * 0.7f;
+        float iw1 = cpWidth * 0.85f;
+        float iw2 = cpWidth * 0.6f;
+        float iw3 = cpWidth * 0.4f;
 
         // *=btn; -=lb; °=chb; _=input
 
-        Label timeInfo = new Label(fs, () -> stringRes("simTimeInfo") + ":", 0, 0, 0);
-        Label timeInfo2 = new Label(stdH * 0.6f, () -> formatTime(timeSinceStart),
+        Label timeInfo = new Label(fs2, () -> stringRes("simTimeInfo") + ":", 0, 0, 0);
+        Label timeInfo2 = new Label(fs3, () -> formatTime(timeSinceStart),
                 5, 0, 10).setFont("Monospaced");
-        Label timeInfo3 = new Label(stdH * 0.6f,
+        Label timeInfo3 = new Label(fs3,
                 () -> (timeToSimulate < realTimeThreshold ? stringRes("realTime") : stringRes("noRealTime"))
                     + (braveNewWorld != null ? " ("+stringRes("running").toLowerCase()+")" : ""),
                 5, 0, 10).setFont("Monospaced");
         timeInfo3.color = () -> Colors.successError(timeToSimulate < realTimeThreshold, theme);
         startPane.add(timeInfo, timeInfo2, timeInfo3);
-        Label set = new Label(fs, () -> stringRes("settings"), 30, 0, 0);
+        Label set = new Label(fs1, () -> stringRes("settings"), 30, 0, 0);
         startPane.add(set);
         // *SimSettings
         Button simSet = new Button(0, stdH, () -> stringRes("sim"), 20, 0, 10);
         startPane.add(simSet);
         CPPane simPane = simSet.newChild();
+        {
             // Sim Geschwindigkeit
-            Label speed = new Label(fs, () -> stringRes("speed") + " (0.001-1000; " + stringRes("std") + "=1)", 0, 0, 0);
+            Label speed = new Label(fs2, () -> stringRes("speed") + " (0.001-1000; " + stringRes("std") + "=1)", 0, 0, 0);
             simPane.add(speed);
-            TextField tfSpeed = new TextField(iw, stdH, fmt.format(simSpeed), 10, 0, 0);
+            TextField tfSpeed = new TextField(iw3, stdH, fmt.format(simSpeed), 10, 0, 0);
             simPane.add(tfSpeed);
             Button applySpeed = new Button(0, stdH, () -> stringRes("apply"), 10, 0, 0);
             applySpeed.action = () -> {
@@ -205,8 +215,8 @@ public class SimularthurGUI extends PApplet {
             };
             simPane.add(applySpeed);
             // UpdateFreq
-            Label uFreq = new Label(fs, () -> stringRes("uFreq") + " [Hz]", 30, 0, 0);
-            TextField tfFreq = new TextField(iw, stdH, fmt.format(updateFreq), 10, 0, 0);
+            Label uFreq = new Label(fs2, () -> stringRes("uFreq") + " [Hz]", 30, 0, 0);
+            TextField tfFreq = new TextField(iw3, stdH, fmt.format(updateFreq), 10, 0, 0);
             tfFreq.offWhenSim = true;
             Button applyFreq = new Button(0, stdH, () -> stringRes("apply"), 10, 0, 0);
             applyFreq.offWhenSim = true;
@@ -216,8 +226,7 @@ public class SimularthurGUI extends PApplet {
                     if (d > 0) {
                         copyWithUpdateFreq(d);
                         tfFreq.input = fmt.format(updateFreq);
-                    }
-                    else throw new ParseException("", 0);
+                    } else throw new ParseException("", 0);
                 } catch (ParseException e) {
                     tfFreq.input = fmt.format(updateFreq);
                     tfFreq.error = true;
@@ -225,30 +234,69 @@ public class SimularthurGUI extends PApplet {
             };
             Button helpFreq = new Button(stdH, stdH, () -> "?", 5, 0, 0);
             CPPane helpFreqT = helpFreq.newChild();
-                helpFreqT.add(new Label(fs*0.8f, () -> stringRes("helpUpdateFreq"), 0, 0, 0));
+            {
+                helpFreqT.add(new Label(fs2, () -> stringRes("helpUpdateFreq"), 0, 0, 0));
+            }
             simPane.add(uFreq, tfFreq, applyFreq, helpFreq);
             // Welt
-            Label wld = new Label(fs, () -> stringRes("world"), 30, 0, 0);
+            Label wld = new Label(fs1, () -> stringRes("world") + " (" + stringRes("vecFormat") + "=x;y;z)", 30, 0, 0);
             simPane.add(wld);
+            // größe
+            Label size = new Label(fs2, () -> stringRes("size"), 20, 0, 0);
+            TextField tfSize = new TextField(iw2, stdH, "", 10, 0, 0);
+            tfSize.offWhenSim = true;
+            tfSize.initV3 = () -> world.getSize();
+            Button applySize = new Button(0, stdH, () -> stringRes("apply"), 10, 0, 0);
+            applySize.offWhenSim = true;
+            applySize.action = () -> {
+                if (parseV3(tfSize.input) != null)
+                    copyWithSize(parseV3(tfSize.input));
+            };
+            // gravity
+            Label grav = new Label(fs2, () -> stringRes("gravity"), 20, 0, 0);
+            TextField tfGrav = new TextField(iw2, stdH, "", 10, 0, 0);
+            tfGrav.initV3 = () -> world.getGravity();
+            Button applyGrav = new Button(0, stdH, () -> stringRes("apply"), 10, 0, 0);
+            applyGrav.action = () -> vectorSetAction(tfGrav, v -> worldEdits.add(new WorldSet(world.setGravity(v), null)));
+            // airDensity
+            Label air = new Label(fs2, () -> stringRes("airDensity"), 20, 0, 0);
+            TextField tfAir = new TextField(iw3, stdH, "", 10, 0, 0);
+            tfAir.initD = () -> world.getAirDensity();
+            Button applyAir = new Button(0, stdH, () -> stringRes("apply"), 10, 0, 0);
+            applyAir.action = () -> {
+                try {
+                    double d = fmt.parse(tfAir.input).doubleValue();
+                    if (d > 0)
+                        worldEdits.add(new WorldSet(world.setAirDensity(d), () -> tfAir.input = fmt.format(d)));
+                } catch (ParseException e) {
+                    tfAir.input = fmt.format(tfAir.initD.get());
+                    tfAir.error = true;
+                }
+            };
+            simPane.add(size, tfSize, applySize, grav, tfGrav, applyGrav, air, tfAir, applyAir);
+        }
         // *Ansicht
         Button view = new Button(0, stdH, () -> stringRes("view"), 20, 0, 10);
         startPane.add(view);
         CPPane viewPane = view.newChild();
+        {
             // -walls
-            Label walls = new Label(fs, () -> stringRes("walls"), 0, 0, 0);
+            Label walls = new Label(fs2, () -> stringRes("walls"), 0, 0, 0);
             viewPane.add(walls);
-                // -id (1-6): "left/up/front/..."
-                // _id
-                // -rgba (0-255; 0-255; 0-255; 0-1)
-                // _rgba
+            // -id (1-6): "left/up/front/..."
+            // _id
+            // -rgba (0-255; 0-255; 0-255; 0-1)
+            // _rgba
             // °scales
             // -sphere detail (3-60; std=30)
-            Label detail = new Label(fs, () -> stringRes("sphereDetail") + " (6-60; " + stringRes("std") + "=30)", 20, 0, 0);
+            Label detail = new Label(fs2, () -> stringRes("sphereDetail") + " (6-60; " + stringRes("std") + "=30)", 20, 0, 0);
             viewPane.add(detail);
             // _sphere detail
+        }
         // -objekt per id
         // _id
         // *Objekteigenschaften anpassen
+        // *löschen
         // *neues Objekt
             // -manuell
             // ... (°random pos...)
@@ -256,9 +304,25 @@ public class SimularthurGUI extends PApplet {
                 // -horiz. throw
         // *Vorlagen
             // *...
+        // todo add shortcuts as click options as well
 
         currentPane = startPane;
         currentInput = null;
+        currentEntity = null;
+    }
+
+    void vectorSetAction(TextField tf, Consumer<Vector3D> action) {
+        try {
+            Vector3D v = parseV3(tf.input);
+            if (v != null) {
+                action.accept(v);
+                tf.input = formatV3(v, vecPrec);
+            }
+            else throw new ParseException("", 0);
+        } catch (ParseException e) {
+            tf.input = formatV3(tf.initV3.get(), vecPrec);
+            tf.error = true;
+        }
     }
 
     void resetColors() {
@@ -282,7 +346,11 @@ public class SimularthurGUI extends PApplet {
         resetToStartWorld();
     }
 
-    void spawn() {
+    void manipulateSphere(Entity e, Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double radius, double density, double bounciness) {
+        Spawnable s1;
+        if (movable) s1 = world.at(pos).withVelocityAndAccel(vel, selfAcc).newSphere(radius, density, bounciness);
+        else s1 = world.at(pos).immovable().newSphere(radius, density);
+        worldEdits.add(new WorldReplace().add(s1, e.color));
     }
 
     void loadTemplate(Supplier<Physicable> w) {
@@ -296,15 +364,31 @@ public class SimularthurGUI extends PApplet {
     }
 
     void copyWithUpdateFreq(double updateFreq) {
-        if (braveNewWorld != null) {
+        if (braveNewWorld != null || this.updateFreq == updateFreq)
             return;
-        }
         Physicable w0 = World.create(updateFreq, world.getSize())
                 .setGravity(world.getGravity())
                 .setAirDensity(world.getAirDensity());
-        w0.spawn(world.getEntities());
-        world = w0;
+        world = w0.spawn(world.getEntities());
         this.updateFreq = updateFreq;
+        // Einstellungen vor Start?
+        if (timeSinceStart == 0)
+            worldSimStart = world;
+    }
+
+    void copyWithSize(Vector3D size) {
+        if (braveNewWorld != null || world.getSize().equals(size))
+            return;
+        Physicable w0 = World.create(updateFreq, size)
+                .setGravity(world.getGravity())
+                .setAirDensity(world.getAirDensity());
+        Spawnable[] inNewRoom = Arrays.stream(world.getEntities())
+                .filter(e -> V3.compareComponents(e.getPos(), size, (a,b) -> a < b))
+                .toArray(Spawnable[]::new);
+        world = w0.spawn(inNewRoom);
+        // Einstellungen vor Start?
+        if (timeSinceStart == 0)
+            worldSimStart = world;
     }
 
     void resetToStartWorld() {
@@ -338,6 +422,24 @@ public class SimularthurGUI extends PApplet {
         s += (int) Math.floor(t) + "s ";
         s += "%03dms".formatted((int) Math.floor(t*1000%1000));
         return s;
+    }
+
+    String formatV3(Vector3D v, int dec) {
+        return v.toString(new DecimalFormat("#." + "#".repeat(dec))).replaceAll("[{} ]", "");
+    }
+
+    Vector3D parseV3(String s) {
+        if (s == null || s.isEmpty()) return null;
+        String[] s1 = s.split(";");
+        if (s1.length != 3) return null;
+        double[] d = new double[3];
+        try {
+            for (int i = 0; i < 3; i++)
+                d[i] = fmt.parse(s1[i]).doubleValue();
+        } catch (ParseException e) {
+            return null;
+        }
+        return new Vector3D(d);
     }
 
     double calcSphereDensity(double radius, double mass) {
@@ -387,16 +489,19 @@ public class SimularthurGUI extends PApplet {
             braveNewWorld = null;
         }
         // Änderungen aus Liste anwenden, während keine asynchrone Änderung läuft
-        if (braveNewWorld == null)
-            applyWorldEdits();
+        if (braveNewWorld == null) {
+            if (applyWorldEdits())
+                currentPane.update();
+        }
         // Zeit fortschreiten
         if (running) {
+            currentPane.update();
             long t = System.nanoTime();
             timeToSimulate += (t - timeLastLoop) / 1.0e9 * simSpeed;
             timeLastLoop = t;
             // Nächste Berechnung asynchron starten?
             if (braveNewWorld == null) {
-                currentTimeDelta = Math.min(timeToSimulate, simSpeed);  // Simuliere maximal 1s (echte Zeit) auf einmal
+                currentTimeDelta = Math.min(timeToSimulate, simSpeed/2);  // Maximaler Sim-Schritt: 0.5 Echtzeit-Sekunden
                 braveNewWorld = new CompletableFuture<>();
                 Executors.newCachedThreadPool().submit(() -> {
                     braveNewWorld.complete(world.update(currentTimeDelta));
@@ -411,9 +516,15 @@ public class SimularthurGUI extends PApplet {
         }
     }
 
-    void applyWorldEdits() {
+    boolean applyWorldEdits() {
+        if (worldEdits.isEmpty())
+            return false;
         world = worldEdits.stream().reduce(world, (w, we) -> we.apply(w), (w1, w2) -> w2);
+        // Einstellungen vor Start?
+        if (timeSinceStart == 0)
+            worldSimStart = world;
         worldEdits.clear();
+        return true;
     }
 
     // Laufende Simulation abbrechen, bei letztem State bleiben
@@ -489,12 +600,12 @@ public class SimularthurGUI extends PApplet {
 
         drawWalls();
 
-        Shape[] shapes = world.getEntities();
+        Spawnable[] shapes = world.getEntities();
         pushMatrix();
         translate(-(float) world.getSize().getX() * scale / 2, -(float) world.getSize().getY() * scale / 2, -(float) world.getSize().getZ() * scale / 2);
-        for (Shape shape : shapes) {
-            if (entities.containsKey(shape.id))
-                entities.get(shape.id).draw(shape, drawId);
+        for (Spawnable shape : shapes) {
+            if (entities.containsKey(shape.getId()))
+                entities.get(shape.getId()).draw(shape, drawId);
         }
         popMatrix();
 
@@ -533,6 +644,7 @@ public class SimularthurGUI extends PApplet {
         if (helpShown) {
             String[] helpText = {
                     // todo complete
+                    // todo performance notice for 'i'
                     "%s:".formatted(stringRes("keybindings")),
                     "[H] - %s".formatted(stringRes("help")),
                     "[%s] - %s".formatted(stringRes("spaceBar").toUpperCase(), stringRes("pauseSim")),
@@ -617,20 +729,20 @@ public class SimularthurGUI extends PApplet {
         // Zusätzliche Eigenschaften
         int color;
 
-        Entity(Shape s, int color) {
-            this(s.id, color);
+        Entity(Spawnable s, int color) {
+            this(s.getId(), color);
         }
         Entity(long id, int color) {
             this.id = id;
             this.color = color;
         }
 
-        void draw(Shape shape, boolean drawId) {
-            if (id != shape.id) return;
-            if (shape.type == ShapeType.SPHERE) {
-                float radius = (float) ((Sphere) shape).radius;
+        void draw(Spawnable shape, boolean drawId) {
+            if (id != shape.getId()) return;
+            if (shape.getType() == ShapeType.SPHERE) {
+                float radius = (float) (double) shape.getTypeData()[0];
                 pushMatrix(); pushStyle();
-                translate((float) shape.pos.getX() * scale, (float) shape.pos.getY() * scale, (float) shape.pos.getZ() * scale);
+                translate((float) shape.getPos().getX() * scale, (float) shape.getPos().getY() * scale, (float) shape.getPos().getZ() * scale);
                 // ID auf Kugel zeichnen
                 if (drawId) {
                     hint(ENABLE_DEPTH_SORT);
@@ -641,7 +753,7 @@ public class SimularthurGUI extends PApplet {
                     textFont(idDisplayFont, radius * scale);
                     textAlign(CENTER, CENTER);
                     fill(255);
-                    text(""+shape.id, 0, 0, radius * scale);
+                    text(""+shape.getId(), 0, 0, radius * scale);
                     popMatrix();
                 }
                 noStroke();
@@ -666,14 +778,15 @@ public class SimularthurGUI extends PApplet {
         }
         @Override
         public Physicable apply(Physicable target) {
-            settings.run();
+            if (settings != null)
+                settings.run();
             return world;
         }
     }
     class WorldSpawn implements WorldEdit {
-        List<Shape> shapes = new ArrayList<>();
+        List<Spawnable> shapes = new ArrayList<>();
         List<Entity> ent = new ArrayList<>();
-        WorldSpawn add(Shape s, int color) {
+        WorldSpawn add(Spawnable s, int color) {
             shapes.add(s);
             ent.add(new Entity(s, color));
             return this;
@@ -682,7 +795,21 @@ public class SimularthurGUI extends PApplet {
         public Physicable apply(Physicable target) {
             assert !shapes.isEmpty() && shapes.size() == entities.size();
             ent.forEach(e -> entities.put(e.id, e));
-            return target.spawn(shapes.toArray(new Shape[0]));
+            return target.spawn(shapes.toArray(new Spawnable[0]));
+        }
+    }
+    class WorldReplace extends WorldSpawn {
+        @Override
+        WorldReplace add(Spawnable s, int color) {
+            return (WorldReplace) super.add(s, color);
+        }
+        @Override
+        public Physicable apply(Physicable target) {
+            assert !shapes.isEmpty() && shapes.size() == entities.size();
+            ent.forEach(e -> entities.put(e.id, e));
+            Physicable[] w = {target};
+            shapes.forEach(s -> w[0] = w[0].replace(s.getId(), s));
+            return w[0];
         }
     }
 
@@ -699,7 +826,7 @@ public class SimularthurGUI extends PApplet {
             this.caller = caller;
             // Zurück-Knopf
             Button back = new Button(0, 25, () -> stringRes("back"), 0, 20, 0);
-            back.action = () -> currentPane = caller.container;
+            back.action = () -> { currentPane = caller.container; currentPane.update(); };
             items.add(back);
         }
 
@@ -707,6 +834,13 @@ public class SimularthurGUI extends PApplet {
             for (CPItem item : items) {
                 item.container = this;
                 this.items.add(item);
+            }
+        }
+
+        void update() {
+            for (CPItem item : items) {
+                if (item instanceof TextField tf && currentInput != tf)
+                    tf.update();
             }
         }
 
@@ -748,7 +882,10 @@ public class SimularthurGUI extends PApplet {
         }
         boolean isClicked(float refX, float refY) {
             if (offWhenSim && running) return false;
-            return mouseX >= pl+refX && mouseX < pl+refX+getW() && mouseY >= refY && mouseY < refY+h;
+            if (mouseX >= pl+refX && mouseX < pl+refX+getW() && mouseY >= refY && mouseY < refY+h) {
+                return true;
+            }
+            return false;
         }
         abstract void draw(float refX, float refY);
     }
@@ -804,7 +941,7 @@ public class SimularthurGUI extends PApplet {
         }
         CPPane newChild() {
             childPane = new CPPane(this);
-            action = () -> currentPane = childPane;
+            action = () -> { currentPane = childPane; currentPane.update(); };
             return childPane;
         }
 
@@ -857,6 +994,9 @@ public class SimularthurGUI extends PApplet {
     class TextField extends CPItem {
         static float fontSizeFactor = 0.8f;
         String input;
+        Supplier<String> init;
+        Supplier<Double> initD;
+        Supplier<Vector3D> initV3;
         int maxLen = 64;
         boolean error;
 
@@ -875,6 +1015,12 @@ public class SimularthurGUI extends PApplet {
             float w = textWidth('x');
             popStyle();
             return (int) Math.floor(this.w/w);
+        }
+
+        void update() {
+            if (init != null) input = init.get();
+            if (initD != null) input = fmt.format(initD.get());
+            if (initV3 != null) input = formatV3(initV3.get(), vecPrec);
         }
 
         @Override
@@ -1082,22 +1228,22 @@ public class SimularthurGUI extends PApplet {
         // Startgeschwindigkeit variiert
         Random r = new Random();
         Vector3D startVel = randomStartSpeed ? new Vector3D(r.nextDouble(11,17),0,r.nextDouble(-0.2,0.2)) : new Vector3D(14.34,0,-0.13);
-        Shape whiteBall = w1.at(new Vector3D(2.54/5, radius+0.001, 1.27/2))
+        Spawnable whiteBall = w1.at(new Vector3D(2.54/5, radius+0.001, 1.27/2))
                 .withVelocityAndAccel(startVel, Vector3D.ZERO)
                 .newSphere(radius, calcSphereDensity(radius, 0.17), bounciness);
         final Physicable w2 = w1.spawn(whiteBall);
         // Kugeldreieck
         Vector3D firstPos = new Vector3D(2.54*0.75, radius+0.001, 1.27/2);
         int rows = 5;
-        Shape[] balls = IntStream.range(0, rows).boxed()
+        Spawnable[] balls = IntStream.range(0, rows).boxed()
                 .flatMap(i -> IntStream.rangeClosed(0, i).mapToObj(j ->
                         firstPos.add(radius, new Vector3D(Math.sqrt(3) * i, 0, 2*j-i))))
                 .map(x -> w2.at(x).newSphere(radius, calcSphereDensity(radius, 0.17), bounciness))
-                .toArray(Shape[]::new);
+                .toArray(Spawnable[]::new);
         Physicable w3 = w2.spawn(balls);
-        Arrays.stream(w3.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(random(80,180)))));
+        Arrays.stream(w3.getEntities()).forEach(e -> entities.put(e.getId(), new Entity(e, color(random(80,180)))));
         // todo colors
-        entities.get(whiteBall.id).color = color(255);
+        entities.get(whiteBall.getId()).color = color(255);
         int[] c = {
                 0xffffd700,
                 0xff0000ff,0xff0000ff,
@@ -1106,7 +1252,7 @@ public class SimularthurGUI extends PApplet {
                 0xff228b22,0xff800000,0xffffd500,0xff800000,0xff228b22,
         };
         for (int i = 0; i < balls.length; i++)
-            entities.get(balls[i].id).color = c[i];
+            entities.get(balls[i].getId()).color = c[i];
         return w3;
     }
 
@@ -1115,7 +1261,7 @@ public class SimularthurGUI extends PApplet {
         Physicable w0 = World.create(updateFreq, new Vector3D(5, 10, 5))
                 .setGravity(new Vector3D(0, -9.81, 0))
                 .setAirDensity(drag);
-        Shape[] shapes = {
+        Spawnable[] shapes = {
                 w0.at(new Vector3D(3, 8, 3))
                         .newSphere(1.5, calcSphereDensity(1.5, 1), 1),
                 w0.at(new Vector3D(1, 6.55, 1))
@@ -1124,8 +1270,8 @@ public class SimularthurGUI extends PApplet {
         };
         w0 = w0.spawn(shapes);
         int[] c = {0xFFffff55, 0xFFff55ff};
-        entities.put(shapes[0].id, new Entity(shapes[0], c[0]));
-        entities.put(shapes[1].id, new Entity(shapes[1], c[1]));
+        entities.put(shapes[0].getId(), new Entity(shapes[0], c[0]));
+        entities.put(shapes[1].getId(), new Entity(shapes[1], c[1]));
         return w0;
     }
 
@@ -1135,7 +1281,7 @@ public class SimularthurGUI extends PApplet {
         double m = 3e9;
         double r = 0.2;
         Physicable w0 = World.create(updateFreq, new Vector3D(1, 1, 1));
-        Shape[] stars = {
+        Spawnable[] stars = {
                 w0.at(new Vector3D(0.5,0.5,0.5))
                         .immovable()
                         .newSphere(0.1, calcSphereDensity(0.1, m)),
@@ -1143,8 +1289,8 @@ public class SimularthurGUI extends PApplet {
                         .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+startVelDeviation), Vector3D.ZERO)
                         .newSphere(0.03, calcSphereDensity(0.03, 1), 1)};
         w0 = w0.spawn(stars);
-        entities.put(stars[0].id, new Entity(stars[0], color(249, 215, 28)));
-        entities.put(stars[1].id, new Entity(stars[1], color(40, 122, 184)));
+        entities.put(stars[0].getId(), new Entity(stars[0], color(249, 215, 28)));
+        entities.put(stars[1].getId(), new Entity(stars[1], color(40, 122, 184)));
         return w0;
     }
 
@@ -1157,7 +1303,7 @@ public class SimularthurGUI extends PApplet {
 //        w1 = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
 //                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
 //                .reduce(w1, (a, b) -> a.spawn(b.getEntities()));
-        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(random(100,200),0,random(200,250)))));
+        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.getId(), new Entity(e, color(random(100,200),0,random(200,250)))));
         return w1;
     }
 
@@ -1172,7 +1318,7 @@ public class SimularthurGUI extends PApplet {
                 .mapToObj(d -> w0.spawn(w0.at(new Vector3D(d, 0.5, 0.2))
                         .newSphere(0.05, 1, 1)))
                 .reduce(w0, (a, b) -> a.spawn(b.getEntities()));
-        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(random(200,250),0,random(200,250)))));
+        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.getId(), new Entity(e, color(random(200,250),0,random(200,250)))));
         return w1;
     }
 
@@ -1184,15 +1330,15 @@ public class SimularthurGUI extends PApplet {
         Physicable w1 = w0.spawn(Stream.generate(() -> w0.randomPos(0.4).add(new Vector3D(0,0.3,0)))
                 .limit(n)
                 .map(p -> w0.at(p).newSphere(0.02, 1, 0.9))
-                .toList().toArray(new Shape[0]));
-        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(20,0,random(200,250)))));
+                .toList().toArray(new Spawnable[0]));
+        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.getId(), new Entity(e, color(20,0,random(200,250)))));
         return w1;
     }
 
     Physicable templateLoggingScenario() {
         Physicable w0 = World.create(1, new Vector3D(10, 10, 10))
                 .setGravity(new Vector3D(0, -1, 0));
-        Shape[] shapes = {
+        Spawnable[] shapes = {
                 w0.at(new Vector3D(5, 3, 2))
                         .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
                         .newSphere(1, 1, 1),
@@ -1201,8 +1347,8 @@ public class SimularthurGUI extends PApplet {
                         .newSphere(1, 1)
         };
         w0 = w0.spawn(shapes);
-        entities.put(shapes[0].id, new Entity(shapes[0], color(230, 10, 190)));
-        entities.put(shapes[1].id, new Entity(shapes[1], color(255)));
+        entities.put(shapes[0].getId(), new Entity(shapes[0], color(230, 10, 190)));
+        entities.put(shapes[1].getId(), new Entity(shapes[1], color(255)));
         return w0;
     }
 

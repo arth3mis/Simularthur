@@ -80,7 +80,7 @@ class PhysicableTest {
                 // pZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(6, 2.095, 5).toArray(),
-                        w1.getEntities()[0].pos.toArray(),
+                        w1.getEntities()[0].getPos().toArray(),
                         tolerance),
                 // vX ändert sich nicht.
                 //
@@ -91,7 +91,7 @@ class PhysicableTest {
                 // vZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(1, -10.81, 0).toArray(),
-                        w1.getEntities()[0].vel.toArray(),
+                        w1.getEntities()[0].getVel().toArray(),
                         tolerance)
         );
     }
@@ -122,12 +122,12 @@ class PhysicableTest {
         // Aktualisieren, bis a und g denselben Betrag haben (Gesamtbeschleunigung = 0)
         do {
             w1 = w1.update(1/updateFreq);
-        } while (w1.getEntities()[0].acc.getNorm() > tolerance);
+        } while (w1.getEntities()[0].getAcc().getNorm() > tolerance);
 
         // Die Geschwindigkeit muss jetzt den Wert v haben (siehe oben)
         assertArrayEquals(
                 new Vector3D(0, -0.36418281, 0).toArray(),
-                w1.getEntities()[0].vel.toArray(),
+                w1.getEntities()[0].getVel().toArray(),
                 tolerance);
     }
 
@@ -157,7 +157,7 @@ class PhysicableTest {
                 // pZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(9, 5, 5).toArray(),
-                        w1.getEntities()[0].pos.toArray(),
+                        w1.getEntities()[0].getPos().toArray(),
                         tolerance),
                 // vX(1s) = 1m/s² * 1s
                 //        = 1m/s
@@ -169,7 +169,7 @@ class PhysicableTest {
                 // vZ ändert sich nicht.
                 () -> assertArrayEquals(
                         new Vector3D(-0.75, 0, 0).toArray(),
-                        w1.getEntities()[0].vel.toArray(),
+                        w1.getEntities()[0].getVel().toArray(),
                         tolerance)
         );
     }
@@ -178,7 +178,7 @@ class PhysicableTest {
      * Überprüft korrekte Kollision zwischen zwei Kugeln:
      *  - Frontalkollision, verschiedene Massen (testet Impulserhaltung)
      *  - versetzte Positionen, gleiche Massen (testet Reflexionswinkel).
-     * Die Aufspaltung in zwei Teil-Tests ermöglicht intuitivere, leichter berechenbare erwartete Werte.
+     * Die Aufspaltung in zwei Teil-Tests ermöglicht leichter berechenbare & nachvollziehbare erwartete Werte.
      */
     @Test
     @DisplayName("Korrekte Kollisionen zwischen zwei Kugeln")
@@ -215,12 +215,12 @@ class PhysicableTest {
                 // v1' = (m1*v1 + m2*(2*v2-v1)) / (m1+m2)
                 () -> assertArrayEquals(
                         new double[]{(m1*v1 + m2*(2*v2-v1)) / (m1+m2), 0, 0},
-                        w1.getEntities()[0].vel.toArray(),
+                        w1.getEntities()[0].getVel().toArray(),
                         tolerance),
                 // v2' = (m2*v2 + m1*(2*v1-v2)) / (m1+m2)
                 () -> assertArrayEquals(
                         new double[]{(m2*v2 + m1*(2*v1-v2)) / (m1+m2), 0, 0},
-                        w1.getEntities()[1].vel.toArray(),
+                        w1.getEntities()[1].getVel().toArray(),
                         tolerance),
                 // 2. Kollision:
                 // Sollte stattfinden wie in der Grafik von Wikipedia beschrieben: https://upload.wikimedia.org/wikipedia/commons/2/2c/Elastischer_sto%C3%9F_2D.gif.
@@ -228,7 +228,7 @@ class PhysicableTest {
                 // überprüfbar mit dem Skalarprodukt zwischen ihnen (muss 0 ergeben)
                 () -> assertEquals(
                         0.0,
-                        w1.getEntities()[3].vel.dotProduct(w1.getEntities()[2].vel),
+                        w1.getEntities()[3].getVel().dotProduct(w1.getEntities()[2].getVel()),
                         tolerance)
         );
     }
@@ -287,23 +287,23 @@ class PhysicableTest {
                 // Position ist auf der anderen Seite des Zentrums
                 () -> assertArrayEquals(
                         center.add(new Vector3D(0, 0, -distance)).toArray(),
-                        w2.getEntities()[1].pos.toArray(),
+                        w2.getEntities()[1].getPos().toArray(),
                         posTolerance),
                 // Geschwindigkeit ist die Negation der Startgeschwindigkeit (außer y-Wert, da der Orbit in der xz-Ebene liegt)
                 () -> assertArrayEquals(
                         new double[]{-startVel.getX(), startVel.getY(), -startVel.getZ()},
-                        w2.getEntities()[1].vel.toArray(),
+                        w2.getEntities()[1].getVel().toArray(),
                         velTolerance),
                 // Ganzer Umlauf
                 // Position ist wie vor der Umlaufzeit
                 () -> assertArrayEquals(
                         startPos.toArray(),
-                        w3.getEntities()[1].pos.toArray(),
+                        w3.getEntities()[1].getPos().toArray(),
                         posTolerance),
                 // Geschwindigkeit ist wie vor der Umlaufzeit
                 () -> assertArrayEquals(
                         startVel.toArray(),
-                        w3.getEntities()[1].vel.toArray(),
+                        w3.getEntities()[1].getVel().toArray(),
                         velTolerance)
         );
     }
@@ -582,51 +582,6 @@ class SphereTest {
                         resultObject2.vel.toArray(),
                         tolerance)
         );
-    }
-
-    @Test
-    void debugForLogging() {
-        // 2 kollidierende Kugeln
-        Shape testObject1 = new Sphere(
-                new Vector3D(6.0000000002, 1.5, 0),
-                new Vector3D(1, -1, 0),
-                Vector3D.MINUS_J,
-                true, 1, 1, 1);
-        Shape testObject2 = new Sphere(
-                new Vector3D(8, 1.5, 0),
-                Vector3D.ZERO,
-                Vector3D.ZERO,
-                false, 1, 1, 1);
-
-        // Liste erstellen
-        ImmutableList<Shape> entities = Lists.immutable.of(testObject1, testObject2);
-        // Ausführung der Methode
-        Shape resultObject1 = testObject1.applyEntityCollisionDeflections(entities, entities);
-        Shape resultObject2 = testObject2.applyEntityCollisionDeflections(entities, entities);
-
-//        System.out.println(resultObject1.pos);
-//        System.out.println(resultObject2.pos);
-//        System.out.println(resultObject1.vel);
-//        System.out.println(resultObject2.vel);
-
-        // todo ziemlich ungenau, was tun
-        // Welt mit Gravitation erschaffen
-        Physicable w0 = World.create(10, new Vector3D(10, 10, 10))
-                .setGravity(new Vector3D(0, -1, 0));
-        // Kugeln erschaffen
-        Physicable w1 = w0.spawn(
-                w0.at(new Vector3D(5, 3, 2))
-                        .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
-                        .newSphere(1, 1, 1),
-                w0.at(new Vector3D(8, 2.5, 2))
-                        .immovable()
-                        .newSphere(1, 1));
-        w1 = w1.update(1);
-        System.out.println(w1.getEntities()[0].pos);
-        System.out.println(w1.getEntities()[0].vel);
-        w1 = w1.update(1);
-        System.out.println(w1.getEntities()[0].pos);
-        System.out.println(w1.getEntities()[0].vel);
     }
 }
 

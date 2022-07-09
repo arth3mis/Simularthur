@@ -6,8 +6,6 @@ import org.apache.logging.log4j.Logger;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 
-import java.util.Arrays;
-import java.util.function.BiFunction;
 import java.util.stream.DoubleStream;
 
 public class World implements Physicable {
@@ -55,30 +53,35 @@ public class World implements Physicable {
         this.entities = entities;
     }
 
-    public ShapeBuilder at(Vector3D position) {
+    public Spawner at(Vector3D position) {
         assert V3.compareComponents(position, size, (d1, d2) -> d1 >= 0 && d1 < d2) : "Die Position muss im Raum liegen";
-        return new ShapeBuilder(position);
+        return new Spawner(position);
     }
 
-    public Physicable spawn(Shape... entities) {
+    public Physicable spawn(Spawnable... entities) {
         assert entities != null : "Liste von Körpern muss existieren";
         World w = this;
-        for (Shape shape : entities)
-            if (w.entities.allSatisfy(e -> !e.equals(shape) && !e.pos.equals(shape.pos)))  // Zwei Körper dürfen nicht dieselbe ID oder Position haben
-                w = w.spawn(shape);
+        for (Spawnable s : entities)
+            w = w.spawn(s);
         return w;
     }
 
-    private World spawn(Shape entity) {
-        assert entity != null : "Kein Element kann auch nicht spawnen";
-        return new World(updateFreq, size, gravity, airDensity, entities.newWith(entity));
+    private World spawn(Spawnable entity) {
+        assert entity instanceof Shape : "Körper muss existieren und Instanz von Shape sein";
+        // Zwei Körper im Raum dürfen nicht dieselbe ID oder Position haben
+        if (entities.anySatisfy(e -> e.equals(entity) || e.pos.equals(entity.getPos())))
+            return this;
+        return new World(updateFreq, size, gravity, airDensity, entities.newWith((Shape) entity));
     }
 
-    public Physicable replace(long id, Shape entity) {
+    public Physicable replace(long id, Spawnable entity) {
         assert entities.select(e -> e.id == id).notEmpty() : "Die Welt muss den Körper mit der angegebenen ID enthalten";
         if (entity == null) return destroy(id);
+        assert entity instanceof Shape : "Körper muss existieren und Instanz von Shape sein";
+        // Reihung von vorherigen Körpern, dem neuen Körper und nachfolgenden Körpern
         ImmutableList<Shape> pre = entities.takeWhile(e -> e.id != id);
-        return new World(updateFreq, size, gravity, airDensity, pre.newWith(entity).newWithAll(entities.drop(pre.size()+1).dropWhile(e -> e.id != id)));
+        return new World(updateFreq, size, gravity, airDensity,
+                pre.newWith((Shape) entity).newWithAll(entities.drop(pre.size()+1).dropWhile(e -> e.id != id)));
     }
 
     /** Löscht Objekt an angegebener Stelle */

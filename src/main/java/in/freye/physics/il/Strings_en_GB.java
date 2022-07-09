@@ -29,14 +29,24 @@ public class Strings_en_GB extends ListResourceBundle {
                 {"std", "std"},
                 {"world", "World"},
                 {"uFreq", "Update frequency"},
+                {"vecFormat", "Vector format"},
+                {"size", "Size"},
+                {"size", "Größe"},
+                {"gravity", "Gravitation"},
+                {"airDensity", "Luftdichte"},
+
+
+
+
+
                 {"helpUpdateFreq", """
 The update frequency is the
 'accuracy promise' of the system.
 Its inverse defines the minimal time step
 that can be simulated at once.
 Higher frequencies lead to better
-simulations (especially with collisions),
-but in turn, the computation time increases."""},
+simulations (especially with collisions).
+In turn, the computation time increases."""},
         };
     }
 }

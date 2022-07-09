@@ -9,12 +9,12 @@ public class V3 {
 
 
     /** Testet den Vektor, dass er nicht null ist und keine NaN/Infinity-Werte enthält */
-    static boolean isValidVector(Vector3D... v) {
+    public static boolean isValidVector(Vector3D... v) {
         return v != null && v.length > 0 && Arrays.stream(v).flatMapToDouble(u -> Arrays.stream(u.toArray())).allMatch(Double::isFinite);
     }
 
     /** Testet jede Komponente des ersten Vektors gegen die des zweiten */
-    static boolean compareComponents(Vector3D v, Vector3D w, BiFunction<Double, Double, Boolean> bf) {
+    public static boolean compareComponents(Vector3D v, Vector3D w, BiFunction<Double, Double, Boolean> bf) {
         assert v != null && w != null : "Zum komponentenweisen Testen darf kein Vektor null sein";
         return bf.apply(v.getX(), w.getX()) && bf.apply(v.getY(), w.getY()) && bf.apply(v.getZ(), w.getZ());
     }

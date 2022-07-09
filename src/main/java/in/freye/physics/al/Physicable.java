@@ -12,12 +12,12 @@ import java.util.stream.IntStream;
 public interface Physicable {
 
     /** Beginnt die Erstellung eines Körpers */
-    ShapeBuilder at(Vector3D position);
+    Spawner at(Vector3D position);
 
     /** Fügt einen oder mehrere Körper in die Welt ein */
-    Physicable spawn(Shape... entities);
+    Physicable spawn(Spawnable... entities);
     /** Ersetzt Körper in der Welt (löscht, wenn null übergeben wird) */
-    Physicable replace(long id, Shape entity);
+    Physicable replace(long id, Spawnable entity);
 
     /** Simuliert die Änderungen im System, die im Zeitschritt deltaTime (Einheit Sekunde) passieren */
     Physicable update(double deltaTime);
@@ -34,7 +34,7 @@ public interface Physicable {
     /** Gibt die Dichte des raumfüllenden Mediums zurück */
     double getAirDensity();
     /** Gibt ein Array der im Raum vorhandenen Körper zurück */
-    Shape[] getEntities();
+    Spawnable[] getEntities();
 
     /** Prüft, ob die Gravitation mit der Erdanziehung übereinstimmt */
     default boolean isEarthLike() {

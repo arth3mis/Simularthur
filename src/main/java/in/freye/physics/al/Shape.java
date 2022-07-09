@@ -4,7 +4,7 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.eclipse.collections.api.list.ImmutableList;
 
 
-public abstract class Shape {
+public abstract class Shape implements Spawnable {
 
     static final long NO_ID = -1;
     private static long idCounter = 0;
@@ -12,16 +12,16 @@ public abstract class Shape {
      * ID des Körpers. Wird in equals() genutzt, um zu testen,
      * ob es sich bei zwei Objekten um Manipulationen desselben ursprünglichen Körpers handelt
      */
-    public final long id;
+    protected final long id;
 
     /** Geometrische Form, entscheidend für Kollisionsdetektion */
-    public final ShapeType type;
+    protected final ShapeType type;
     /** pos: Position; vel: Geschwindigkeit; acc: Gesamtbeschleunigung; selfAcc: Eigenbeschleunigung */
-    public final Vector3D pos, vel, acc, selfAcc;
+    protected final Vector3D pos, vel, acc, selfAcc;
     /** Eigenschaft, ob sich die Position durch Bewegungsgleichungen verändern darf */
-    final boolean movable;
+    protected final boolean movable;
     /** mass: Masse; density: Dichte; bounciness: Reflexionsstärke bei Kollision */
-    final double mass, density, bounciness;
+    protected final double mass, density, bounciness;
 
     /**
      * Die ID sollte nur in privaten Konstruktoren als Parameter verfügbar sein,
@@ -77,11 +77,16 @@ public abstract class Shape {
      */
     abstract Shape applyEntityCollisionDeflections(ImmutableList<Shape> detectEntities, ImmutableList<Shape> deflectionEntities/*, Shape prev*/);
 
-    /**
-     * Gibt einen neuen Zustand des Körpers mit manipulierten Werten zurück.
-     * Die ID ändert sich jedoch, um Einmaligkeit der IDs im Raum zu garantieren
-     */
-    public abstract Shape manipulate(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double mass, double bounciness);
+    // Getter-Methoden
+    public long getId() { return id; }
+    public ShapeType getType() { return type; }
+    public Vector3D getPos() { return pos; }
+    public Vector3D getVel() { return vel; }
+    public Vector3D getAcc() { return acc; }
+    public Vector3D getSelfAcc() { return selfAcc; }
+    public double getMass() { return mass; }
+    public double getDensity() { return density; }
+    public double getBounciness() { return bounciness; }
 
     /** Derselbe Körper kann zu unterschiedlichen Zeitpunkten existieren, deshalb ist er nur mit einer ID eindeutig identifizierbar */
     public boolean equals(Object obj) {
