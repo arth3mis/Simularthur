@@ -610,17 +610,18 @@ class SphereTest {
 //        System.out.println(resultObject2.vel);
 
         // todo ziemlich ungenau, was tun
-        Physicable w1 = World.create(10, new Vector3D(10, 10, 10))
+        // Welt mit Gravitation erschaffen
+        Physicable w0 = World.create(10, new Vector3D(10, 10, 10))
                 .setGravity(new Vector3D(0, -1, 0));
-        Shape[] shapes = {
-                w1.at(new Vector3D(5, 3, 2))
+        // Kugeln erschaffen
+        Physicable w1 = w0.spawn(
+                w0.at(new Vector3D(5, 3, 2))
                         .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
                         .newSphere(1, 1, 1),
-                w1.at(new Vector3D(8, 2.5, 2))
+                w0.at(new Vector3D(8, 2.5, 2))
                         .immovable()
-                        .newSphere(1, 1)
-        };
-        w1 = w1.spawn(shapes).update(2);
+                        .newSphere(1, 1));
+        w1 = w1.update(1);
         System.out.println(w1.getEntities()[0].pos);
         System.out.println(w1.getEntities()[0].vel);
         w1 = w1.update(1);
@@ -632,10 +633,12 @@ class SphereTest {
 
 /**
  * Erzeugt eine Simulation, die mithilfe von Monitoring nachvollzogen werden kann.
+ * Um eine übersichtliche Anzahl von Log-Ausgaben zu erhalten, wird das Genauigkeitsversprechen reduziert.
+ * Die simulierten Werte geben trotzdem das erwartete Verhalten korrekt wieder.
  *
- * Dass Monitoring muss in der Datei "log4j2.xml" eingeschaltet werden
+ * Das Monitoring muss in der Datei "/src/main/resources/log4j2.xml" eingeschaltet werden
  */
-class Logging {
+class LoggingScenario {
 
     private static final Logger LOGGER = LogManager.getLogger("monitoring");
 
@@ -644,16 +647,16 @@ class Logging {
 
         // Welt mit Gravitation erschaffen
         Physicable w0 = World.create(10, new Vector3D(10, 10, 10))
-                .setGravity(new Vector3D(0, 1, 0));
-        // todo see if this is okay or just AL method logging
-//        LOGGER.info("Neue Welt mit Eigenschaften: Größe = {}, Gravitation = {}, Luftdichte = {})", w0.getSize(), w0.getGravity(), w0.getAirDensity());
+                .setGravity(new Vector3D(0, -1, 0));
         // Kugeln erschaffen
         Physicable w1 = w0.spawn(
-                w0.at(new Vector3D(5, 1, 0))
+                w0.at(new Vector3D(5, 3, 2))
                         .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
                         .newSphere(1, 1, 1),
-                w0.at(new Vector3D(6, 0.5, 0))
+                w0.at(new Vector3D(8, 2.5, 2))
                         .immovable()
                         .newSphere(1, 1));
+        // Zeit simulieren: Die Kollisionen treten zu t=1s und t=2s ein
+        w1.update(2);
     }
 }

@@ -17,6 +17,19 @@ public class Strings_en_GB extends ListResourceBundle {
                 {"pauseSim", "Pause/Continue simulation"},
                 {"view", "View"},
                 {"walls", "Wall style"},
+                {"simTimeInfo", "Simulated time"},
+                {"realTime", "Real-time"},
+                {"noRealTime", "no Real-time"},
+                {"running", "Running"},
+                {"settings", "Settings"},
+                {"sim", "Simulation"},
+                {"speed", "Speed"},
+                {"apply", "Apply"},
+                {"sphereDetail", "Sphere detail level"},
+                {"std", "std"},
+                {"world", "World"},
+                {"uFreq", "Update frequency"},
+                {"helpUpdateFreq", "The update frequency is\nthe 'accuracy promise' of the system"},
         };
     }
 }

@@ -1,3 +1,5 @@
+TODO remove from project structure
+
 loses zeug -----------------------------
 
 wie könnte ein monitoring fall aussehen, der den algorithmus beobachtet?
@@ -24,7 +26,7 @@ DOK:
     -Gravitation durch andere Körper hat konstante Beschleunigung in einem timeStep
     -keine Reibung bei Kollision oder andere thermischen Verluste
         -aber Strömungswiderstand
-            -hat konstante Beschleunigung in einem timeStep & ist reaktiv (nutzt "alte" vel) todo maybe change to temp. -> vel.add(acc) -> bräuchte auch temp acc, vllt unclean im code
+            -hat konstante Beschleunigung in einem timeStep & ist reaktiv (nutzt "alte" vel)
 2: Algo
 -ich nutze CCD, finde Zeitpunkt der Kollision und passe pos&vel an
 -simulateChanges(): Jede Manipulation (durch stream.map realisiert) gibt eine neue Liste von Körpern zurück, welche den Zustand nach der jeweiligen Manip. darstellen
@@ -51,12 +53,8 @@ Logging (toggleable)
 - spheres: name logs after (type &) id (and make individual output files, if making file output?)
 
 
-Eigenbeschleunigung: Damit lässt sich Zeug simulieren. Enthält keine
-    -"eigenbeschleunigung: wird nicht durch kraftfeld o.Ä. erzeugt, demnach ist es wie ein Triebwerk,
-das Energie zur Beschl. bereitstellt. Daher habe ich mich entschieden,
-diese Beschleunigung durch Kollisionen auf 0 zu setzen, denn IRL beschleunigen Objekte
-(Autos, Pistolenkugeln etc.) auch nicht mehr weiter, nachdem sie kollidiert sind.
-Externe Beschl. (Gravitation) wirken natürlich weiter"
+Eigenbeschleunigung: Damit lässt sich z.B. gut simulieren, wie ein beschleunigtes Objekt auf ein ruhendes trifft.
+    "wirkt wie ein homogenes Kraftfeld, das allerdings nur auf einen Körper wirkt."
 
 
 Quellen:
@@ -85,9 +83,9 @@ https://commons.apache.org/proper/commons-math/
 https://www.eclipse.org/collections/
 
 
-TODO --------
+Parts
 (PRD)
-VAL
+(VAL)
 DOK
 IND
 - alle TODOS durcharbeiten

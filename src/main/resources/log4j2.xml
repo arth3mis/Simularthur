@@ -2,13 +2,13 @@
 <Configuration>
     <Appenders>
         <Console name="Console">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"/>
         </Console>
     </Appenders>
     <Loggers>
         <!-- level="off": Monitoring ausschalten
              level="info": Monitoring einschalten -->
-        <Logger name="monitoring" level="info" additivity="false">
+        <Logger name="monitoring" level="off" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
         <Root level="off">

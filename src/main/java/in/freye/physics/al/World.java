@@ -45,7 +45,7 @@ public class World implements Physicable {
     }
 
     private World(double updateFrequency, Vector3D size, Vector3D gravity, double airDensity, ImmutableList<Shape> entities) {
-        assert isValidVector(size, gravity) && entities != null : "Die Eigenschaften müssen initialisiert sein";
+        assert V3.isValidVector(size, gravity) && entities != null : "Die Eigenschaften müssen initialisiert sein";
         assert DoubleStream.of(size.toArray()).allMatch(d -> d > 0) : "Der Raum muss ein realer Quader sein";
         assert updateFrequency > 0 : "Der minimale Update-Schritt muss positiv sein";
         this.updateFreq = updateFrequency;
@@ -56,7 +56,7 @@ public class World implements Physicable {
     }
 
     public ShapeBuilder at(Vector3D position) {
-        assert compareComponents(position, size, (d1, d2) -> d1 >= 0 && d1 < d2) : "Die Position muss im Raum liegen";
+        assert V3.compareComponents(position, size, (d1, d2) -> d1 >= 0 && d1 < d2) : "Die Position muss im Raum liegen";
         return new ShapeBuilder(position);
     }
 
@@ -98,6 +98,7 @@ public class World implements Physicable {
 
     /** Wendet physikalische Berechnungen auf jeden Körper an */
     private ImmutableList<Shape> simulateChanges(double dt) {
+        LOGGER.info("Zeitschritt ({}s) wird simuliert.", V3.r(dt));
         // Filtern aller Körper, deren Masse eine signifikante Gravitation ausübt
         ImmutableList<Shape> gravityShapes = entities
                 .select(e1 -> e1.mass >= GRAVITY_SIGNIFICANT_MASS);
@@ -119,7 +120,7 @@ public class World implements Physicable {
     }
 
     public Physicable setGravity(Vector3D newGravity) {
-        assert isValidVector(newGravity) : "Gravitation muss in Rechnungen anwendbar sein";
+        assert V3.isValidVector(newGravity) : "Gravitation muss in Rechnungen anwendbar sein";
         return new World(updateFreq, size, newGravity, airDensity, entities);
     }
 
@@ -142,16 +143,5 @@ public class World implements Physicable {
 
     public Shape[] getEntities() {
         return entities.toArray(new Shape[0]);
-    }
-
-    /** Testet den Vektor, dass er nicht null ist und keine NaN/Infinity-Werte enthält */
-    static boolean isValidVector(Vector3D... v) {
-        return v != null && v.length > 0 && Arrays.stream(v).flatMapToDouble(u -> Arrays.stream(u.toArray())).allMatch(Double::isFinite);
-    }
-
-    /** Testet jede Komponente des ersten Vektors gegen die des zweiten */
-    static boolean compareComponents(Vector3D v, Vector3D w, BiFunction<Double, Double, Boolean> bf) {
-        assert v != null && w != null : "Zum komponentenweisen Testen darf kein Vektor null sein";
-        return bf.apply(v.getX(), w.getX()) && bf.apply(v.getY(), w.getY()) && bf.apply(v.getZ(), w.getZ());
     }
 }

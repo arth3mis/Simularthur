@@ -10,14 +10,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.function.BiPredicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class SimularthurGUI extends PApplet {
 
@@ -42,25 +43,26 @@ public class SimularthurGUI extends PApplet {
         setLanguage(0);
 
         //fullScreen(P3D);
-        size(1200, 800, P3D);
+        size(1400, 950, P3D);
         smooth(8);
     }
 
     // Variablen (Simulation)
     Physicable world;
     float scale = 1;
-    double simSpeed = 0;
-    double updateFreq = 1000;
+    boolean running;
+    double simSpeed = 1;
+    double updateFreq = 60;
 
     // Variablen (Verbindung Simulation & Display)
-    double timeToSimulate;
+    double timeToSimulate, currentTimeDelta;
+    // Wenn timeToSimulate über 1s Echtzeit (Simulationszeit abhängig von simSpeed) beträgt, "hinkt" die Simulation hinterher
+    double realTimeThreshold = 1;
     double timeSinceStart;
-    long timeLastUpdate;
+    long timeLastLoop;
     Physicable worldSimStart;
-    // todo maybe overwrite var to indicate when bnw is thrown away bc template load/reset (and make spawn queue that executes when no async is running)
     List<WorldEdit> worldEdits;
-    CompletableFuture<Physicable> braveNewWorld;  // todo green/red light indicating if sim is computed in real-time or not
-    // Zusatzdaten für Verbindung
+    CompletableFuture<Physicable> braveNewWorld;
     Map<Long, Entity> entities;
 
     // Variablen (Anzeige der Simulation)
@@ -69,11 +71,11 @@ public class SimularthurGUI extends PApplet {
     float stdDistance = 200;
     float distance = stdDistance;
     boolean camLight = true;
-    PVector nonCamLightDirection = new PVector(0.4f, -1, -0.4f);
+    PVector nonCamLightDirection = new PVector(0.4f, -1, 0.4f);
     float mouseWheelDelta = 0;
     PVector camEye = new PVector(), camCenter = new PVector();
     boolean[] moveCam = new boolean[6];
-    float moveSpeedFactor = 10;
+    float moveSpeedFactor = 0.5f;
     boolean drawId = false;
     PFont idDisplayFont;
     PShape boxSide;
@@ -92,7 +94,6 @@ public class SimularthurGUI extends PApplet {
     boolean cpExpanded = true;
     float cpWidth = 350, cpToolbarH = 50;
     float stdH = cpToolbarH/2;
-    PShape rect;
     PFont stdFont;
     DecimalFormat fmt;
     boolean helpShown = false;
@@ -112,6 +113,7 @@ public class SimularthurGUI extends PApplet {
     void setLanguage(int index) {
         lang = SUPPORTED_LANGUAGES[index];
         fmt = (DecimalFormat) DecimalFormat.getInstance(lang);
+        fmt.setMinimumFractionDigits(0);
     }
     final Map<Locale, ResourceBundle> STRINGS = new HashMap<>();
     private String stringRes(String key) {
@@ -130,7 +132,6 @@ public class SimularthurGUI extends PApplet {
         stdFont = createFont("Arial", 26, true);  // Größe wird von Hilfetext verwendet
 
         // setup shapes
-        rect = loadShape("rect.svg");
         boxSide = createShape();
         boxSide.beginShape();
         boxSide.vertex(-1,-1,0);
@@ -166,32 +167,88 @@ public class SimularthurGUI extends PApplet {
 //        startPane.add(new Label(() -> stringRes("testString"), 16, 0, 0, 0));
 
         float fs = stdH * 0.8f;
+        float iw = cpWidth * 0.6f;
 
         // *=btn; -=lb; °=chb; _=input
-        Label timeInfo = new Label(fs, () -> "Simulierte Zeit:", 0, 0, 0);
-        Label timeInfo2 = new Label(stdH * 0.6f, () -> formatTime(timeSinceStart), 5, 0, 10);
-        timeInfo2.font = createFont("Monospaced", stdH * 0.6f, true);
-        startPane.add(timeInfo);
-        startPane.add(timeInfo2);
+
+        Label timeInfo = new Label(fs, () -> stringRes("simTimeInfo") + ":", 0, 0, 0);
+        Label timeInfo2 = new Label(stdH * 0.6f, () -> formatTime(timeSinceStart),
+                5, 0, 10).setFont("Monospaced");
+        Label timeInfo3 = new Label(stdH * 0.6f,
+                () -> (timeToSimulate < realTimeThreshold ? stringRes("realTime") : stringRes("noRealTime"))
+                    + (braveNewWorld != null ? " ("+stringRes("running").toLowerCase()+")" : ""),
+                5, 0, 10).setFont("Monospaced");
+        timeInfo3.color = () -> Colors.successError(timeToSimulate < realTimeThreshold, theme);
+        startPane.add(timeInfo, timeInfo2, timeInfo3);
+        Label set = new Label(fs, () -> stringRes("settings"), 30, 0, 0);
+        startPane.add(set);
         // *SimSettings
+        Button simSet = new Button(0, stdH, () -> stringRes("sim"), 20, 0, 10);
+        startPane.add(simSet);
+        CPPane simPane = simSet.newChild();
+            // Sim Geschwindigkeit
+            Label speed = new Label(fs, () -> stringRes("speed") + " (0.001-1000; " + stringRes("std") + "=1)", 0, 0, 0);
+            simPane.add(speed);
+            TextField tfSpeed = new TextField(iw, stdH, fmt.format(simSpeed), 10, 0, 0);
+            simPane.add(tfSpeed);
+            Button applySpeed = new Button(0, stdH, () -> stringRes("apply"), 10, 0, 0);
+            applySpeed.action = () -> {
+                try {
+                    double d = fmt.parse(tfSpeed.input).doubleValue();
+                    if (d >= 0.001 && d <= 1000)
+                        setSimSpeed(d);
+                    else throw new ParseException("", 0);
+                } catch (ParseException e) {
+                    tfSpeed.input = fmt.format(simSpeed);
+                    tfSpeed.error = true;
+                }
+            };
+            simPane.add(applySpeed);
+            // UpdateFreq
+            Label uFreq = new Label(fs, () -> stringRes("uFreq") + " [Hz]", 30, 0, 0);
+            TextField tfFreq = new TextField(iw, stdH, fmt.format(updateFreq), 10, 0, 0);
+            tfFreq.offWhenSim = true;
+            Button applyFreq = new Button(0, stdH, () -> stringRes("apply"), 10, 0, 0);
+            applyFreq.offWhenSim = true;
+            applyFreq.action = () -> {
+                try {
+                    double d = fmt.parse(tfFreq.input).doubleValue();
+                    if (d > 0) {
+                        copyWithUpdateFreq(d);
+                        tfFreq.input = fmt.format(updateFreq);
+                    }
+                    else throw new ParseException("", 0);
+                } catch (ParseException e) {
+                    tfFreq.input = fmt.format(updateFreq);
+                    tfFreq.error = true;
+                }
+            };
+            Button helpFreq = new Button(stdH, stdH, () -> "?", 5, 0, 0);
+            CPPane helpFreqT = helpFreq.newChild();
+                helpFreqT.add(new Label(fs*0.8f, () -> stringRes("helpUpdateFreq"), 0, 0, 0));
+            simPane.add(uFreq, tfFreq, applyFreq);
+            // Welt
+            Label wld = new Label(fs, () -> stringRes("world"), 30, 0, 0);
+            simPane.add(wld);
         // *Ansicht
-        Button view = new Button(0, stdH, () -> stringRes("view"), 30, 0, 0);
+        Button view = new Button(0, stdH, () -> stringRes("view"), 20, 0, 10);
         startPane.add(view);
         CPPane viewPane = view.newChild();
             // -walls
-        Label walls = new Label(fs, () -> stringRes("walls"), 0, 0, 0);
-        viewPane.add(walls);
+            Label walls = new Label(fs, () -> stringRes("walls"), 0, 0, 0);
+            viewPane.add(walls);
                 // -id (1-6): "left/up/front/..."
                 // _id
                 // -rgba (0-255; 0-255; 0-255; 0-1)
                 // _rgba
             // °scales
             // -sphere detail (3-60; std=30)
+            Label detail = new Label(fs, () -> stringRes("sphereDetail") + " (6-60; " + stringRes("std") + "=30)", 20, 0, 0);
+            viewPane.add(detail);
             // _sphere detail
         // -objekt per id
         // _id
         // *Objekteigenschaften anpassen
-        // todo siehe handy
         // *neues Objekt
             // -manuell
             // ... (°random pos...)
@@ -205,7 +262,7 @@ public class SimularthurGUI extends PApplet {
     }
 
     void resetColors() {
-        boxSideColors = IntStream.generate(() -> Colors.WLD_WALLS.get(theme)).limit(6).toArray();
+        boxSideColors = IntStream.generate(() -> Colors.SIM_WALLS.get(theme)).limit(6).toArray();
         boxSideVisible = new int[]{0,0,0,0,0,0};
     }
 
@@ -226,16 +283,28 @@ public class SimularthurGUI extends PApplet {
     }
 
     void spawn() {
-
     }
 
     void loadTemplate(Supplier<Physicable> w) {
-        setSimSpeed(0);
+        running = false;
+        entities = new HashMap<>();
         worldSimStart = w.get();
         worldEdits.add(new WorldSet(w.get(), () -> {
             resetSimulatedTime();
             resetView(w.get().getSize());
         }));
+    }
+
+    void copyWithUpdateFreq(double updateFreq) {
+        if (braveNewWorld != null) {
+            return;
+        }
+        Physicable w0 = World.create(updateFreq, world.getSize())
+                .setGravity(world.getGravity())
+                .setAirDensity(world.getAirDensity());
+        w0.spawn(world.getEntities());
+        world = w0;
+        this.updateFreq = updateFreq;
     }
 
     void resetToStartWorld() {
@@ -252,7 +321,6 @@ public class SimularthurGUI extends PApplet {
     String formatTime(double t) {
         boolean b = false;
         String s = "";
-        t += 25*3600;
         if (t >= 24*3600) {
             s += (int) Math.floor(t/24/3600) + " days ";
             t %= 24*3600;
@@ -268,8 +336,7 @@ public class SimularthurGUI extends PApplet {
             t %= 60;
         }
         s += (int) Math.floor(t) + "s ";
-        String ms = fmt.format(Math.round(t*1000%1000));
-        s += "0".repeat(max(3-ms.length(), 0)) + ms + "ms";
+        s += "%03dms".formatted((int) Math.floor(t*1000%1000));
         return s;
     }
 
@@ -309,8 +376,12 @@ public class SimularthurGUI extends PApplet {
         // Ergebnis der asynchronen Berechnung?
         if (braveNewWorld != null && braveNewWorld.isDone()) {
             try {
-                if (!braveNewWorld.isCancelled())
+                if (!braveNewWorld.isCancelled()) {
                     world = braveNewWorld.get();
+                    timeToSimulate = Math.max(timeToSimulate - currentTimeDelta, 0);
+                    timeSinceStart += currentTimeDelta;
+                    currentTimeDelta = 0;
+                }
             } catch (InterruptedException | ExecutionException ignored) {
             }
             braveNewWorld = null;
@@ -319,19 +390,23 @@ public class SimularthurGUI extends PApplet {
         if (braveNewWorld == null)
             applyWorldEdits();
         // Zeit fortschreiten
-        if (simSpeed > 0) {
+        if (running) {
             long t = System.nanoTime();
-            timeToSimulate += (t - timeLastUpdate) / 1.0e9;
-            timeSinceStart += (t - timeLastUpdate) / 1.0e9;
-            timeLastUpdate = t;
+            timeToSimulate += (t - timeLastLoop) / 1.0e9 * simSpeed;
+            timeLastLoop = t;
             // Nächste Berechnung asynchron starten?
             if (braveNewWorld == null) {
-                final double time = timeToSimulate;
+                currentTimeDelta = Math.min(timeToSimulate, simSpeed);  // Simuliere maximal 1s (echte Zeit) auf einmal
                 braveNewWorld = new CompletableFuture<>();
                 Executors.newCachedThreadPool().submit(() -> {
-                    braveNewWorld.complete(world.update(time));
-                    braveNewWorld.thenRun(() -> timeToSimulate -= time);
+                    braveNewWorld.complete(world.update(currentTimeDelta));
                 });
+            }
+        } else {
+            timeLastLoop = System.nanoTime();
+            if (timeToSimulate >= realTimeThreshold) {
+                // Restzeit, die simuliert werden soll, zurücksetzen, um Aufstauen zu vermeiden
+                timeToSimulate = 0;
             }
         }
     }
@@ -341,10 +416,19 @@ public class SimularthurGUI extends PApplet {
         worldEdits.clear();
     }
 
+    // Laufende Simulation abbrechen, bei letztem State bleiben
+    void cancelSim() {
+        running = false;
+        if (timeToSimulate >= realTimeThreshold && braveNewWorld != null) {
+            braveNewWorld.cancel(true);
+        }
+    }
+
     void setSimSpeed(double d) {
-        if (simSpeed == 0 && d != 0)
-            timeLastUpdate = System.nanoTime();
         simSpeed = d;
+        if (simSpeed > 0) {
+            realTimeThreshold = simSpeed;
+        }
     }
 
     @Override
@@ -352,7 +436,7 @@ public class SimularthurGUI extends PApplet {
         boolean mouseCP = cpExpanded && mouseX < cpWidth;
         update();
 
-        background(Colors.WLD_BACKGROUND.get(theme));
+        background(Colors.SIM_BACKGROUND.get(theme));
 
         // Simulation
         hint(ENABLE_DEPTH_TEST);
@@ -448,6 +532,7 @@ public class SimularthurGUI extends PApplet {
         // Hilfe
         if (helpShown) {
             String[] helpText = {
+                    // todo complete
                     "%s:".formatted(stringRes("keybindings")),
                     "[H] - %s".formatted(stringRes("help")),
                     "[%s] - %s".formatted(stringRes("spaceBar").toUpperCase(), stringRes("pauseSim")),
@@ -483,7 +568,7 @@ public class SimularthurGUI extends PApplet {
 
         shapeMode(CENTER);
         if (world.isEarthLike())
-            fill(Colors.WLD_EARTH_WALL_U_L_R_F_B.get(theme));
+            fill(Colors.SIM_EARTH_WALL_U_L_R_F_B.get(theme));
         // hintere/vordere Wand auf z-Achse
         translate(0, 0, v.z/2);
         if (!world.isEarthLike()) fill(boxSideColors[5]);
@@ -518,7 +603,7 @@ public class SimularthurGUI extends PApplet {
         translate(0, 0, v.y);  // ist noch rotiert, sonst als y-Komponente
 //            rotateX(PI/2);
         if (!world.isEarthLike()) fill(boxSideColors[2]);
-        else fill(Colors.WLD_EARTH_WALL_D.get(theme));
+        else fill(Colors.SIM_EARTH_WALL_D.get(theme));
         if (visible.test(boxSideNormals[2], 2))
             shape(boxSide, v.x/2, v.z/2, v.x, v.z);
 //            rotateX(-PI/2);
@@ -531,23 +616,13 @@ public class SimularthurGUI extends PApplet {
         long id;
         // Zusätzliche Eigenschaften
         int color;
-        // Speichert vergangene Zustände zum Anzeigen einer Spur im Raum
-        // todo maybe trail w/ line segments
-        List<Shape> trail;
 
         Entity(Shape s, int color) {
-            this(s.id, color, 0);
+            this(s.id, color);
         }
-
-        Entity(Shape s, int color, int trailLength) {
-            this(s.id, color, trailLength);
-        }
-
-        Entity(long id, int color, int trailLength) {
+        Entity(long id, int color) {
             this.id = id;
             this.color = color;
-            if (trailLength > 0)
-                trail = new ArrayList<>();
         }
 
         void draw(Shape shape, boolean drawId) {
@@ -598,9 +673,9 @@ public class SimularthurGUI extends PApplet {
     class WorldSpawn implements WorldEdit {
         List<Shape> shapes = new ArrayList<>();
         List<Entity> ent = new ArrayList<>();
-        WorldSpawn add(Shape s, int color, int trailLength) {
+        WorldSpawn add(Shape s, int color) {
             shapes.add(s);
-            ent.add(new Entity(s, color, trailLength));
+            ent.add(new Entity(s, color));
             return this;
         }
         @Override
@@ -628,9 +703,11 @@ public class SimularthurGUI extends PApplet {
             items.add(back);
         }
 
-        void add(CPItem item) {
-            item.container = this;
-            items.add(item);
+        void add(CPItem... items) {
+            for (CPItem item : items) {
+                item.container = this;
+                this.items.add(item);
+            }
         }
 
         boolean checkClick() {
@@ -658,6 +735,7 @@ public class SimularthurGUI extends PApplet {
         CPPane container;
         float w, h, mt, mb, pl;  // width, height, margin-top, margin-bottom, padding-left
         PFont font;
+        boolean offWhenSim;
 
         CPItem(float w, float h, float fontSize) {
             this.w = w;
@@ -669,6 +747,7 @@ public class SimularthurGUI extends PApplet {
             return w;
         }
         boolean isClicked(float refX, float refY) {
+            if (offWhenSim) return false;
             return mouseX >= pl+refX && mouseX < pl+refX+getW() && mouseY >= refY && mouseY < refY+h;
         }
         abstract void draw(float refX, float refY);
@@ -676,6 +755,7 @@ public class SimularthurGUI extends PApplet {
 
     class Label extends CPItem {
         Supplier<String> text;
+        Supplier<Integer> color;
 
         Label(float fontSize, Supplier<String> text, float marginTop, float marginBottom, float paddingLeft) {
             super(0, fontSize, fontSize);
@@ -685,10 +765,17 @@ public class SimularthurGUI extends PApplet {
             pl = paddingLeft;
         }
 
+        Label setFont(String fontName) {
+            font = createFont(fontName, font.getSize(), true);
+            return this;
+        }
+
         @Override
         void draw(float refX, float refY) {
             pushMatrix(); pushStyle();
             fill(Colors.CP_LB_TEXT.get(theme));
+            if (color != null)
+                fill(color.get());
             textFont(font);
             textAlign(LEFT, TOP);
             text(text.get(), pl+refX, refY);
@@ -732,7 +819,7 @@ public class SimularthurGUI extends PApplet {
         }
 
         boolean isClicked() {
-            if (dynamicRef == null) return false;
+            if (dynamicRef == null || offWhenSim) return false;
             return isClicked(dynamicRef.get()[0], dynamicRef.get()[1]);
         }
         @Override
@@ -752,8 +839,12 @@ public class SimularthurGUI extends PApplet {
         void draw(float refX, float refY) {
             pushMatrix(); pushStyle();
             stroke(Colors.CP_BTN_STROKE.get(theme));
+            if (offWhenSim && running)
+                stroke(Colors.CP_BTN_STROKE_OFF.get(theme));
             strokeWeight(1.5f * (helpShown?0:1));
             fill(Colors.CP_BTN_BACKGROUND.get(theme));
+            if (offWhenSim && running)
+                fill(Colors.CP_BTN_BACKGROUND_OFF.get(theme));
             rect(pl+refX, refY, getW(), h);
             fill(Colors.CP_BTN_TEXT.get(theme));
             textFont(font);
@@ -766,13 +857,35 @@ public class SimularthurGUI extends PApplet {
     class TextField extends CPItem {
         static float fontSizeFactor = 0.8f;
         String input;
-        int maxLen;
-        boolean active;
+        int maxLen = 64;
+        boolean error;
 
         TextField(float w, float h, String input, float marginTop, float marginBottom, float paddingLeft) {
             super(w, h, h * fontSizeFactor);
             this.input = input;
-            active = false;
+            font = createFont("Monospaced", font.getSize(), true);
+            mt = marginTop;
+            mb = marginBottom;
+            pl = paddingLeft;
+        }
+
+        int getCharFit() {
+            pushStyle();
+            textFont(font);
+            float w = textWidth('x');
+            popStyle();
+            return (int) Math.floor(this.w/w);
+        }
+
+        @Override
+        boolean isClicked(float refX, float refY) {
+            if (super.isClicked(refX, refY)) {
+                currentInput = this;
+                return true;
+            } else if (currentInput == this)
+                currentInput = null;
+            error = false;
+            return false;
         }
 
         @Override
@@ -781,13 +894,15 @@ public class SimularthurGUI extends PApplet {
             stroke(Colors.CP_TF_STROKE.get(theme));
             strokeWeight(1f * (helpShown?0:1));
             fill(Colors.CP_TF_BACKGROUND.get(theme));
-            if (active)
+            if (currentInput == this)
                 fill(Colors.CP_TF_BACKGROUND_ACTIVE.get(theme));
-            rect(0, 0, getW(), h);
+            if (error)
+                fill(Colors.ERROR.get(theme));
+            rect(refX, refY, getW(), h);
             fill(Colors.CP_TF_TEXT.get(theme));
             textFont(font);
             textAlign(LEFT, CENTER);
-            text(input, refX+3, refY+h/2.5f);
+            text(input.substring(max(0, input.length()-getCharFit())), refX+3, refY+h/2.5f);
             popMatrix(); popStyle();
         }
     }
@@ -795,12 +910,20 @@ public class SimularthurGUI extends PApplet {
     class CheckBox extends CPItem {
         static float fontSizeFactor = 0.9f;
         static float spacingFactor = 1.05f;
-        boolean checked;
         Supplier<String> text;
+        Supplier<Boolean> checked;
+        Runnable action;
 
-        CheckBox(float h, Supplier<String> text) {
+        CheckBox(float h, Supplier<String> text, float paddingLeft) {
             super(0, h, h * fontSizeFactor);
             this.text = text;
+            pl = paddingLeft;
+        }
+
+        CheckBox init(Supplier<Boolean> refValue, Runnable action) {
+            checked = refValue;
+            this.action = action;
+            return this;
         }
 
         float getW() {
@@ -813,10 +936,31 @@ public class SimularthurGUI extends PApplet {
         }
 
         @Override
+        boolean isClicked(float refX, float refY) {
+            if (super.isClicked(refX, refY)) {
+                if (action != null)
+                    action.run();
+                return true;
+            }
+            return false;
+        }
+
+        @Override
         void draw(float refX, float refY) {
             pushMatrix(); pushStyle();
 
+            float strokeW = 2;
+            noStroke();
+            fill(Colors.CP_CB_FIELD_STROKE.get(theme));
             rect(refX, refY, h, h);
+            fill(Colors.CP_CB_FIELD_BG.get(theme));
+            rect(refX+strokeW, refY+strokeW, h-2*strokeW, h-2*strokeW);
+            if (checked.get()) {
+                stroke(Colors.CP_CB_TICK.get(theme));
+                float sp = 1;
+                line(refX+strokeW+sp, refY+strokeW+sp, refX+h-strokeW-sp, refY+h-strokeW-sp);
+                line(refX+strokeW+sp, refY+h-strokeW-sp, refX+h-strokeW-sp, refY+strokeW+sp);
+            }
 
             textFont(font);
             textAlign(LEFT, CENTER);
@@ -842,23 +986,25 @@ public class SimularthurGUI extends PApplet {
                 currentInput.input += DEC_SEP;
             switch (key) {
                 case '-', ';', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> currentInput.input += key;
-                case BACKSPACE -> currentInput.input = currentInput.input.substring(0, min(0, currentInput.input.length()-1));
+                case BACKSPACE -> currentInput.input = currentInput.input.substring(0, max(0, currentInput.input.length()-1));
                 default -> { break input; }
             }
             return;
         }
 
         switch (key) {
+            case 'c' -> cpExpanded = !cpExpanded;
             case 'r' -> resetView(world.getSize());
-            case 'c' -> camLight = !camLight;
+            case 'l' -> camLight = !camLight;
             case 'i' -> drawId = !drawId;
             case BACKSPACE -> resetToStartWorld();
-            case ' ' -> setSimSpeed(simSpeed == 0 ? 1 : 0);
+            case ' ' -> running = !running;
+            case 'x' -> cancelSim();
             case 't' -> theme = Theme.values()[1 - theme.ordinal()];
-            // debug
             case 'h' -> helpShown = true;
-            case 'k' -> resetWorld();
-            case 'l' -> loadTemplate(this::templateLoggingScenario);
+            case 'k' -> { resetWorld(); resetColors(); resetView(world.getSize()); }
+            // debug
+            case 'm' -> loadTemplate(() -> templateSphereCluster());
             // /debug
             case CODED -> {
                 switch (keyCode) {
@@ -866,7 +1012,6 @@ public class SimularthurGUI extends PApplet {
                     case DOWN -> moveCam[1] = true;
                     case LEFT -> moveCam[2] = true;
                     case RIGHT -> moveCam[3] = true;
-                    case CONTROL -> cpExpanded = !cpExpanded;
                 }
             }
         }
@@ -888,13 +1033,12 @@ public class SimularthurGUI extends PApplet {
 
     @Override
     public void mouseClicked() {
-        if (cpBtnExpand.isClicked()) return;
+        if (cpBtnExpand.isClicked())
+            return;
         for (Button btn : globalButtons)
             if (btn.isClicked())
                 return;
-        // Input "abwählen", wenn ins Leere geklickt
-        if (!currentPane.checkClick() && currentInput != null)
-            currentInput = null;
+        currentPane.checkClick();
     }
 
     @Override
@@ -923,6 +1067,7 @@ public class SimularthurGUI extends PApplet {
     // Vordefinierte Beispiel-Szenarien, die geladen werden können
     //
 
+    Physicable templatePoolTable() { return templatePoolTable(false); }
     Physicable templatePoolTable(boolean randomStartSpeed) {
         // Billard
         // Standard: neun Fuß Tisch (254cm x 127cm), Kugeln: 57.2mm Durchmesser, 170g
@@ -950,58 +1095,115 @@ public class SimularthurGUI extends PApplet {
                 .map(x -> w2.at(x).newSphere(radius, calcSphereDensity(radius, 0.17), bounciness))
                 .toArray(Shape[]::new);
         Physicable w3 = w2.spawn(balls);
-        Arrays.stream(w3.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(random(80,180)), 0)));
+        Arrays.stream(w3.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(random(80,180)))));
         // todo colors
         entities.get(whiteBall.id).color = color(255);
+        int[] c = {
+                0xffffd700,
+                0xff0000ff,0xff0000ff,
+                0xffff0000,0xff000000,0xffff0000,
+                0xff4b0082,0xffff4500,0xffff4500,0xff4b0082,
+                0xff228b22,0xff800000,0xffffd500,0xff800000,0xff228b22,
+        };
+        for (int i = 0; i < balls.length; i++)
+            entities.get(balls[i].id).color = c[i];
         return w3;
     }
 
+    Physicable templateAirResistance() { return templateAirResistance(1.2); }
+    Physicable templateAirResistance(double drag) {
+        Physicable w0 = World.create(updateFreq, new Vector3D(5, 10, 5))
+                .setGravity(new Vector3D(0, -9.81, 0))
+                .setAirDensity(drag);
+        Shape[] shapes = {
+                w0.at(new Vector3D(3, 8, 3))
+                        .newSphere(1.5, calcSphereDensity(1.5, 1), 1),
+                w0.at(new Vector3D(1, 6.55, 1))
+                        //.withVelocityAndAccel(new Vector3D(0,-1,0), Vector3D.ZERO)
+                        .newSphere(0.05, calcSphereDensity(0.05, 1), 1)
+        };
+        w0 = w0.spawn(shapes);
+        int[] c = {0xFFffff55, 0xFFff55ff};
+        entities.put(shapes[0].id, new Entity(shapes[0], c[0]));
+        entities.put(shapes[1].id, new Entity(shapes[1], c[1]));
+        return w0;
+    }
+
+    Physicable templateStarWithOrbit() { return templateStarWithOrbit(0); }
     Physicable templateStarWithOrbit(double startVelDeviation) {
         // A star is born (Sehr satisfying mit worldGravity(0,-1.81,0))
         double m = 3e9;
         double r = 0.2;
-        Physicable w1 = World.create(updateFreq, new Vector3D(1, 1, 1));
+        Physicable w0 = World.create(updateFreq, new Vector3D(1, 1, 1));
         Shape[] stars = {
-                w1.at(new Vector3D(0.5,0.5,0.5))
+                w0.at(new Vector3D(0.5,0.5,0.5))
                         .immovable()
                         .newSphere(0.1, calcSphereDensity(0.1, m)),
-                w1.at(new Vector3D(0.5 - r,0.5,0.5))
+                w0.at(new Vector3D(0.5 - r,0.5,0.5))
                         .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+startVelDeviation), Vector3D.ZERO)
                         .newSphere(0.03, calcSphereDensity(0.03, 1), 1)};
-        w1 = w1.spawn(stars);
+        w0 = w0.spawn(stars);
         entities.put(stars[0].id, new Entity(stars[0], color(249, 215, 28)));
         entities.put(stars[1].id, new Entity(stars[1], color(40, 122, 184)));
-        return w1;
+        return w0;
     }
 
     Physicable templateGravityBouncing() {
-        final Physicable world = World.create(updateFreq, new Vector3D(1, 1, 1))
+        final Physicable w0 = World.create(updateFreq, new Vector3D(1, 1, 1))
                 .setGravity(new Vector3D(0, -9.81, 0));
         Physicable w1 = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
-                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, 1)))
-                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
+                .mapToObj(d -> w0.spawn(w0.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, 1)))
+                .reduce(w0, (a, b) -> a.spawn(b.getEntities()));
 //        w1 = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
 //                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
 //                .reduce(w1, (a, b) -> a.spawn(b.getEntities()));
+        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(random(100,200),0,random(200,250)))));
+        return w1;
+    }
+
+    Physicable templateNewtonPendel() {
+        // "Newton-Pendel" (Gute Demonstration von Genauigkeitsversprechen) (sehr lustig mit Gravitation)
+        Physicable w0 = World.create(updateFreq, new Vector3D(1, 1, 1));
+        Physicable w1;
+        w1 = w0.spawn(w0.at(new Vector3D(0.1,0.5,0.2))
+                .withVelocityAndAccel(new Vector3D(1,0,0), Vector3D.ZERO)
+                .newSphere(0.05, 1, 1));
+        w1 = DoubleStream.iterate(0.4, d -> d < 0.7, d -> d + 0.1)
+                .mapToObj(d -> w0.spawn(w0.at(new Vector3D(d, 0.5, 0.2))
+                        .newSphere(0.05, 1, 1)))
+                .reduce(w0, (a, b) -> a.spawn(b.getEntities()));
+        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(random(200,250),0,random(200,250)))));
+        return w1;
+    }
+
+    Physicable templateSphereCluster() { return templateSphereCluster(100); }
+    Physicable templateSphereCluster(int n) {
+        Physicable w0 = World.create(updateFreq, new Vector3D(1,1,1))
+                .setGravity(new Vector3D(0, -9.81, 0))
+                .setAirDensity(1.2);
+        Physicable w1 = w0.spawn(Stream.generate(() -> w0.randomPos(0.4).add(new Vector3D(0,0.3,0)))
+                .limit(n)
+                .map(p -> w0.at(p).newSphere(0.02, 1, 0.9))
+                .toList().toArray(new Shape[0]));
         Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.id, new Entity(e, color(20,0,random(200,250)))));
         return w1;
     }
 
     Physicable templateLoggingScenario() {
-        Physicable w1 = World.create(1, new Vector3D(10, 10, 10))
+        Physicable w0 = World.create(1, new Vector3D(10, 10, 10))
                 .setGravity(new Vector3D(0, -1, 0));
         Shape[] shapes = {
-                w1.at(new Vector3D(5, 3, 2))
+                w0.at(new Vector3D(5, 3, 2))
                         .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
                         .newSphere(1, 1, 1),
-                w1.at(new Vector3D(8, 2.5, 2))
+                w0.at(new Vector3D(8, 2.5, 2))
                         .immovable()
                         .newSphere(1, 1)
         };
-        w1 = w1.spawn(shapes);
+        w0 = w0.spawn(shapes);
         entities.put(shapes[0].id, new Entity(shapes[0], color(230, 10, 190)));
         entities.put(shapes[1].id, new Entity(shapes[1], color(255)));
-        return w1;
+        return w0;
     }
 
     // Gravitations-Bouncing
@@ -1011,13 +1213,6 @@ public class SimularthurGUI extends PApplet {
 //        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
 //                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
 //                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
-
-    // Drag; needs 5x10x5 world size
-//        world = world.spawn(world.at(new Vector3D(3, 8, 3))
-//                        .newSphere(1.5, calcSphereDensity(1.5, 1), 1),
-//                world.at(new Vector3D(1, 6.55, 1))
-//                        //.withVelocityAndAccel(new Vector3D(0,-1,0), Vector3D.ZERO)
-//                        .newSphere(0.05, calcSphereDensity(0.05, 1), 1));
 
     // Einzel-Kollision + Impulserhaltung ("conservation of momentum")
 //        world = world.spawn(
@@ -1037,26 +1232,10 @@ public class SimularthurGUI extends PApplet {
 //                        .newSphere(0.05,1,1)
 //        );
 
-    // Newton-"Pendel" (Gute Demonstration von Genauigkeitsversprechen) (sehr lustig mit Gravitation)
-//        pitch = 0;
-//        world = world.spawn(world.at(new Vector3D(0.9,0.5,0.8))
-//                .withVelocityAndAccel(new Vector3D(-1,0,0), Vector3D.ZERO)
-//                .newSphere(0.05, 1, 1));
-//        world = DoubleStream.iterate(0.4, d -> d < 0.7, d -> d + 0.1)
-//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5, 0.8))
-//                        .newSphere(0.05, 1, 1)))
-//                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
-
     // Fehler in wallCollision Korrekturrechnung, Notfallberechnung
 //        world = world.spawn(world.at(new Vector3D(0.5,0.04,0.5))
 //                .withVelocityAndAccel(new Vector3D(0, -0.2, 0), Vector3D.ZERO)
 //                .newSphere(0.05,1,1));
-
-    // Kugelhaufen
-//        world = world.spawn(Stream.generate(() -> world.randomPos(0.4).add(new Vector3D(0,0.3,0)))
-//                .limit(100)
-//                .map(p -> world.at(p).newSphere(0.02, 1, 1))
-//                .toList().toArray(new Shape[0]));
 
 
 //        // Ellipsenbahn -> Kreisbahn irgendwann; needs 10x10x10 world size

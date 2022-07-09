@@ -15,8 +15,21 @@ public class Strings_de_DE extends ListResourceBundle {
                 {"help", "Hilfe"},
                 {"spaceBar", "Leertaste"},
                 {"pauseSim", "Simulation pausieren/fortsetzen"},
-                {"view", "Ansicht"},
+                {"view", "Anzeige"},
                 {"walls", "Wandgestaltung"},
+                {"simTimeInfo", "Simulierte Zeit"},
+                {"realTime", "Echtzeit"},
+                {"noRealTime", "Nicht Echtzeit"},
+                {"running", "Rechnet"},
+                {"settings", "Einstellungen"},
+                {"sim", "Simulation"},
+                {"speed", "Geschwindigkeit"},
+                {"apply", "Anwenden"},
+                {"sphereDetail", "Kugeldetail-Level"},
+                {"std", "std"},
+                {"world", "Welt"},
+                {"uFreq", "Aktualisierungsfrequenz"},
+                {"helpUpdateFreq", "Die Aktualisierungsfrequenz ist\ndas 'Genauigkeitsversprechen' des Systems"},
         };
     }
 }
