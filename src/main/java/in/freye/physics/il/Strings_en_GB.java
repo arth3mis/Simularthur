@@ -29,7 +29,14 @@ public class Strings_en_GB extends ListResourceBundle {
                 {"std", "std"},
                 {"world", "World"},
                 {"uFreq", "Update frequency"},
-                {"helpUpdateFreq", "The update frequency is\nthe 'accuracy promise' of the system"},
+                {"helpUpdateFreq", """
+The update frequency is the
+'accuracy promise' of the system.
+Its inverse defines the minimal time step
+that can be simulated at once.
+Higher frequencies lead to better
+simulations (especially with collisions),
+but in turn, the computation time increases."""},
         };
     }
 }

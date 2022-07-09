@@ -226,7 +226,7 @@ public class SimularthurGUI extends PApplet {
             Button helpFreq = new Button(stdH, stdH, () -> "?", 5, 0, 0);
             CPPane helpFreqT = helpFreq.newChild();
                 helpFreqT.add(new Label(fs*0.8f, () -> stringRes("helpUpdateFreq"), 0, 0, 0));
-            simPane.add(uFreq, tfFreq, applyFreq);
+            simPane.add(uFreq, tfFreq, applyFreq, helpFreq);
             // Welt
             Label wld = new Label(fs, () -> stringRes("world"), 30, 0, 0);
             simPane.add(wld);
@@ -747,7 +747,7 @@ public class SimularthurGUI extends PApplet {
             return w;
         }
         boolean isClicked(float refX, float refY) {
-            if (offWhenSim) return false;
+            if (offWhenSim && running) return false;
             return mouseX >= pl+refX && mouseX < pl+refX+getW() && mouseY >= refY && mouseY < refY+h;
         }
         abstract void draw(float refX, float refY);
@@ -819,7 +819,7 @@ public class SimularthurGUI extends PApplet {
         }
 
         boolean isClicked() {
-            if (dynamicRef == null || offWhenSim) return false;
+            if (dynamicRef == null || offWhenSim && running) return false;
             return isClicked(dynamicRef.get()[0], dynamicRef.get()[1]);
         }
         @Override

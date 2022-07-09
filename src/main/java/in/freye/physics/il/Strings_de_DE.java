@@ -29,7 +29,14 @@ public class Strings_de_DE extends ListResourceBundle {
                 {"std", "std"},
                 {"world", "Welt"},
                 {"uFreq", "Aktualisierungsfrequenz"},
-                {"helpUpdateFreq", "Die Aktualisierungsfrequenz ist\ndas 'Genauigkeitsversprechen' des Systems"},
+                {"helpUpdateFreq", """
+Die Aktualisierungsfrequenz ist das
+'Genauigkeitsversprechen' des Systems.
+Ihr Kehrwert ist der minimale Zeitschritt,
+der auf einmal simuliert werden darf.
+Höhere Frequenzen führen zu genauerer
+Simulation (besonders bei Kollisionen),
+dafür erhöht sich auch die Rechenzeit."""},
         };
     }
 }
