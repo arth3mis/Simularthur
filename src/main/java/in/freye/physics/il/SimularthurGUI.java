@@ -294,9 +294,54 @@ public class SimularthurGUI extends PApplet {
             // _sphere detail
         }
         // -objekt per id
-        // _id
+        Label id = new Label(fs2, () -> stringRes("byId")+" ("+minId()+"-"+maxId()+")", 30, 0, 0);
+        TextField tfId = new TextField(iw3, stdH, "", 10, 0, 0);
+        Button loadId = new Button(0, stdH, () -> stringRes("load"), 10, 0, 0);
+        // loadId.action weiter unten definiert
+        startPane.add(id, tfId, loadId);
         // *Objekteigenschaften anpassen
+        Button edit = new Button(0, stdH, () -> stringRes("manipulate"), 20, 0, 0);
+        edit.action = () -> {
+            try {
+                long l = fmt.parse(tfId.input).longValue();
+                Optional<Spawnable> o = Arrays.stream(world.getEntities()).filter(e -> e.getId() == l).findAny();
+                currentEntity = o.orElseThrow();
+                currentPane = edit.childPane;
+                currentPane.update();
+            } catch (ParseException | NoSuchElementException e) {
+                tfId.error = true;
+            }
+        };
+        startPane.add(edit);
+        CPPane editPane = edit.newChild();
+        {
+            Label p = new Label(fs2, () -> stringRes("pos"), 0, 0, 0);
+            TextField tfP = new TextField(iw1, stdH, "", 10, 0, 0);
+            tfP.initV3 = () -> currentEntity.getPos();
+
+            editPane.add(p, tfP);
+            // apply (1 btn for all)
+            Button applyAll = new Button(0, stdH, () -> stringRes("apply"), 30, 0, 0);
+            applyAll.action = () -> {
+
+                // todo check existence again, if not exist kick out of screen and tfId.error=true
+                //  overwrite currentEntity.
+                //  and watch out: new shape has new id, overwrite tfId on return to reflect
+            };
+            Label warn = new Label(fs3, () -> stringRes("idWarn"), 8, 0, 0);
+            editPane.add(applyAll);
+        }
         // *löschen
+        Button del = new Button(0, stdH, () -> stringRes("del"), 10, 0, 0);
+        del.action = () -> {
+            try {
+                long l = fmt.parse(tfId.input).longValue();
+                Spawnable s = Arrays.stream(world.getEntities()).filter(e -> e.getId() == l).findAny().orElseThrow();
+                worldEdits.add(new WorldReplace(l, null, 0));
+            } catch (ParseException | NoSuchElementException e) {
+                tfId.error = true;
+            }
+        };
         // *neues Objekt
             // -manuell
             // ... (°random pos...)
@@ -309,6 +354,13 @@ public class SimularthurGUI extends PApplet {
         currentPane = startPane;
         currentInput = null;
         currentEntity = null;
+    }
+
+    long minId() {
+        return Arrays.stream(world.getEntities()).mapToLong(Spawnable::getId).min().orElse(0);
+    }
+    long maxId() {
+        return Arrays.stream(world.getEntities()).mapToLong(Spawnable::getId).max().orElse(0);
     }
 
     void vectorSetAction(TextField tf, Consumer<Vector3D> action) {
@@ -350,7 +402,7 @@ public class SimularthurGUI extends PApplet {
         Spawnable s1;
         if (movable) s1 = world.at(pos).withVelocityAndAccel(vel, selfAcc).newSphere(radius, density, bounciness);
         else s1 = world.at(pos).immovable().newSphere(radius, density);
-        worldEdits.add(new WorldReplace().add(s1, e.color));
+        worldEdits.add(new WorldReplace(e.id, s1, e.color));
     }
 
     void loadTemplate(Supplier<Physicable> w) {
@@ -784,32 +836,30 @@ public class SimularthurGUI extends PApplet {
         }
     }
     class WorldSpawn implements WorldEdit {
-        List<Spawnable> shapes = new ArrayList<>();
-        List<Entity> ent = new ArrayList<>();
-        WorldSpawn add(Spawnable s, int color) {
-            shapes.add(s);
-            ent.add(new Entity(s, color));
-            return this;
+        Spawnable shape;
+        Entity ent;
+        WorldSpawn(Spawnable s, int color) {
+            shape = s;
+            ent = new Entity(s, color);
         }
         @Override
         public Physicable apply(Physicable target) {
-            assert !shapes.isEmpty() && shapes.size() == entities.size();
-            ent.forEach(e -> entities.put(e.id, e));
-            return target.spawn(shapes.toArray(new Spawnable[0]));
+            assert shape != null && ent != null;
+            entities.put(ent.id, ent);
+            return target.spawn(shape);
         }
     }
     class WorldReplace extends WorldSpawn {
-        @Override
-        WorldReplace add(Spawnable s, int color) {
-            return (WorldReplace) super.add(s, color);
+        long id;
+        WorldReplace(long id, Spawnable with, int color) {
+            super(with, color);
+            this.id = id;
         }
         @Override
         public Physicable apply(Physicable target) {
-            assert !shapes.isEmpty() && shapes.size() == entities.size();
-            ent.forEach(e -> entities.put(e.id, e));
-            Physicable[] w = {target};
-            shapes.forEach(s -> w[0] = w[0].replace(s.getId(), s));
-            return w[0];
+            assert shape != null && ent != null;
+            entities.put(ent.id, ent);
+            return target.replace(id, shape);
         }
     }
 
@@ -869,7 +919,7 @@ public class SimularthurGUI extends PApplet {
         CPPane container;
         float w, h, mt, mb, pl;  // width, height, margin-top, margin-bottom, padding-left
         PFont font;
-        boolean offWhenSim;
+        boolean off, offWhenSim;
 
         CPItem(float w, float h, float fontSize) {
             this.w = w;
@@ -881,7 +931,7 @@ public class SimularthurGUI extends PApplet {
             return w;
         }
         boolean isClicked(float refX, float refY) {
-            if (offWhenSim && running) return false;
+            if (off || offWhenSim && running) return false;
             if (mouseX >= pl+refX && mouseX < pl+refX+getW() && mouseY >= refY && mouseY < refY+h) {
                 return true;
             }

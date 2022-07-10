@@ -34,11 +34,18 @@ public class Strings_en_GB extends ListResourceBundle {
                 {"size", "Größe"},
                 {"gravity", "Gravitation"},
                 {"airDensity", "Luftdichte"},
+                {"byId", "Choose ID"},
+                {"load", "Load"},
+                {"manipulate", "Manipulate"},
+                {"del", "Delete"},
+                {"pos", "Position"},
+                {"vel", "Velocity"},
+                {"acc", "Acceleration"},
 
 
 
 
-
+                {"idWarn", "After editing, the shape will get a new ID,\nthe old one is discarded."},
                 {"helpUpdateFreq", """
 The update frequency is the
 'accuracy promise' of the system.

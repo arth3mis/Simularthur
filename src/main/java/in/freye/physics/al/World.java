@@ -75,7 +75,7 @@ public class World implements Physicable {
     }
 
     public Physicable replace(long id, Spawnable entity) {
-        assert entities.select(e -> e.id == id).notEmpty() : "Die Welt muss den Körper mit der angegebenen ID enthalten";
+        assert entities.anySatisfy(e -> e.id == id) : "Die Welt muss den Körper mit der angegebenen ID enthalten";
         if (entity == null) return destroy(id);
         assert entity instanceof Shape : "Körper muss existieren und Instanz von Shape sein";
         // Reihung von vorherigen Körpern, dem neuen Körper und nachfolgenden Körpern
