@@ -81,7 +81,7 @@ public class World implements Physicable {
         // Reihung von vorherigen Körpern, dem neuen Körper und nachfolgenden Körpern
         ImmutableList<Shape> pre = entities.takeWhile(e -> e.id != id);
         return new World(updateFreq, size, gravity, airDensity,
-                pre.newWith((Shape) entity).newWithAll(entities.drop(pre.size()+1).dropWhile(e -> e.id != id)));
+                pre.newWith((Shape) entity).newWithAll(entities.drop(pre.size()+1)));
     }
 
     /** Löscht Objekt an angegebener Stelle */

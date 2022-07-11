@@ -33,18 +33,21 @@ public class Strings_de_DE extends ListResourceBundle {
                 {"size", "Größe"},
                 {"gravity", "Gravitation"},
                 {"airDensity", "Luftdichte"},
-                {"byId", "ID auswählen"},
+                {"byId", "Körper-ID"},
                 {"load", "Laden"},
-                {"manipulate", "Manipulieren"},
+                {"manipulate", "Bearbeiten"},
                 {"del", "Löschen"},
                 {"pos", "Position"},
                 {"vel", "Geschwindigkeit"},
-                {"acc", "Beschleunigung"},
+                {"selfAcc", "Eigenbeschleunigung"},
+                {"mass", "Masse"},
+                {"movable", "Beweglich"},
+                {"bounciness", "Abprallstärke"},
 
 
 
 
-                {"idWarn", "Nach Anpassungen bekommt der Körper eine neue ID,\ndie alte existiert dann nicht mehr."},
+                {"idWarn", "Nach Anpassungen bekommt\nder Körper eine neue ID,\ndie alte existiert dann nicht mehr."},
                 {"helpUpdateFreq", """
 Die Aktualisierungsfrequenz ist das
 'Genauigkeitsversprechen' des Systems.

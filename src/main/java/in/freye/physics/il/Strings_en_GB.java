@@ -31,16 +31,18 @@ public class Strings_en_GB extends ListResourceBundle {
                 {"uFreq", "Update frequency"},
                 {"vecFormat", "Vector format"},
                 {"size", "Size"},
-                {"size", "Größe"},
                 {"gravity", "Gravitation"},
-                {"airDensity", "Luftdichte"},
-                {"byId", "Choose ID"},
+                {"airDensity", "Air density"},
+                {"byId", "Shape ID"},
                 {"load", "Load"},
-                {"manipulate", "Manipulate"},
+                {"manipulate", "Edit"},
                 {"del", "Delete"},
                 {"pos", "Position"},
                 {"vel", "Velocity"},
-                {"acc", "Acceleration"},
+                {"selfAcc", "Self-acceleration"},
+                {"mass", "Mass"},
+                {"movable", "Movable"},
+                {"bounciness", "Bounciness"},
 
 
 

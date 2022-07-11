@@ -10,6 +10,7 @@ public interface Spawnable {
     Vector3D getVel();
     Vector3D getAcc();
     Vector3D getSelfAcc();
+    boolean getMovable();
     double getMass();
     double getDensity();
     double getBounciness();

@@ -84,6 +84,7 @@ public abstract class Shape implements Spawnable {
     public Vector3D getVel() { return vel; }
     public Vector3D getAcc() { return acc; }
     public Vector3D getSelfAcc() { return selfAcc; }
+    public boolean getMovable() { return movable; }
     public double getMass() { return mass; }
     public double getDensity() { return density; }
     public double getBounciness() { return bounciness; }
