@@ -23,7 +23,7 @@ enum Colors {
     CP_TF_BACKGROUND(0xFFffffff, 0xFFffffff),
     CP_TF_BACKGROUND_ACTIVE(0xFF9bdaff, 0xFF9bdaff),
     CP_CB_FIELD_BG(0xFFffffff, 0xFFffffff),
-    CP_CB_FIELD_STROKE(0xFF222222, 0xFF000022),
+    CP_CB_FIELD_STROKE(0xFF888888, 0xFF000022),
     CP_CB_TICK(0xFF000000, 0xFF222233),
 
     HELP_TEXT(0xFF000000, 0xFFffffff),
@@ -35,8 +35,8 @@ enum Colors {
     SIM_EARTH_WALL_D(0xFF5ccc00, 0xFF268902),
     SIM_EARTH_WALL_U_L_R_F_B(0xFF00bfff, 0xFF00298c),
 
-    SUCCESS(0xFF00aa00, 0xFF00dd00),
-    ERROR(0xFFaa0000, 0xFFcc0000),
+    SUCCESS(0xFF00bb00, 0xFF00dd00),
+    ERROR(0xFFcc0000, 0xFFcc0000),
     ;
 
     private final int rgbaLight, rgbaDark;

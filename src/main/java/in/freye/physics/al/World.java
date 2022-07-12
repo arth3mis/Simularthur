@@ -54,7 +54,7 @@ public class World implements Physicable {
     }
 
     public Spawner at(Vector3D position) {
-        assert V3.compareComponents(position, size, (d1, d2) -> d1 >= 0 && d1 < d2) : "Die Position muss im Raum liegen";
+        assert V3.compareComponents(position, size, (p, s) -> p >= 0 && p < s) : "Die Position muss im Raum liegen";
         return new Spawner(position);
     }
 
@@ -132,19 +132,8 @@ public class World implements Physicable {
         return new World(updateFreq, size, gravity, newAirDensity, entities);
     }
 
-    public Vector3D getSize() {
-        return size;
-    }
-
-    public Vector3D getGravity() {
-        return gravity;
-    }
-
-    public double getAirDensity() {
-        return airDensity;
-    }
-
-    public Shape[] getEntities() {
-        return entities.toArray(new Shape[0]);
-    }
+    public Vector3D getSize() { return size; }
+    public Vector3D getGravity() { return gravity; }
+    public double getAirDensity() { return airDensity; }
+    public Shape[] getEntities() { return entities.toArray(new Shape[0]); }
 }

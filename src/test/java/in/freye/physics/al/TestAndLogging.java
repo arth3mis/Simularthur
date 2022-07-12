@@ -612,6 +612,6 @@ class LoggingScenario {
                         .immovable()
                         .newSphere(1, 1));
         // Zeit simulieren: Die Kollisionen treten zu t=1s und t=2s ein
-        w1.update(2);
+        w1.update(2.1);
     }
 }

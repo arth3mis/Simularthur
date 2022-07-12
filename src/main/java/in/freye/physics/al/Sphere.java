@@ -68,10 +68,8 @@ public class Sphere extends Shape {
                 // Mithilfe des "prev" Zustands kann die tatsächliche Kollisionszeit berechnet werden (Umstellung mit PQ-Formel).
                 // pColl = 0.5*a*tColl² + v*tColl + p  (p,v,a sind Werte von prev)
                 // => tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
-                //    Zur Vermeidung von Wurzeln aus negativen Zahlen: (Anwendbar, da mit Beträgen gerechnet wird)
-                //    tColl = -(v/a) + sqrt((v/a)² + 2(|p-pColl|)/a)
                 double tColl = prev.acc.toArray()[i] == 0 ? 0 : -(prev.vel.toArray()[i] / prev.acc.toArray()[i])
-                        + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) + 2 * Math.abs(prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
+                        + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) - 2 * (prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
                 // Geschwindigkeitskorrektur und Invertierung der Komponente
                 // (Impulserhaltung: Keine Geschwindigkeit auf Wand "übertragbar" -> 100% Reflexion)
                 double v1 = prev.vel.add(tColl, prev.acc).toArray()[i] * bounciness
@@ -86,7 +84,7 @@ public class Sphere extends Shape {
             }
         }
         if (!p.equals(pos) || !v.equals(vel))
-            LOGGER.info("ID={}; Wandkollision: p'={}m; v'={}m/s²", id, V3.r(p), V3.r(v));
+            LOGGER.info("ID={}; Wandkollision: p'={}m; v'={}m/s", id, V3.r(p), V3.r(v));
         return new Sphere(id, p, v, acc, selfAcc, movable, radius, density, bounciness);
     }
 
@@ -103,10 +101,8 @@ public class Sphere extends Shape {
                             .scalarMultiply(a.radius + b.radius - a.pos.subtract(b.pos).getNorm())
                             .scalarMultiply(b.movable ? 0.5 : 1));
                     // tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
-                    // Zur Vermeidung von Wurzeln aus negativen Zahlen: (Anwendbar, da mit Beträgen gerechnet wird)
-                    // tColl = -(v/a) + sqrt((v/a)² + 2(|p-pColl|)/a)
                     double tColl = -(prev.vel.getNorm()/prev.acc.getNorm())
-                            + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) + 2 * Math.abs(prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
+                            + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
                     LOGGER.info("ID={}; Kollision mit ID={} (p{} = {}): Korrekturen: pColl = {}m; vColl = {}m/s",
                             id, b.id, b.id, V3.r(b.pos), V3.r(pColl), Double.isNaN(tColl) ? V3.r(vel) : V3.r(prev.vel.add(tColl, prev.acc)));
                     // tColl ist NaN bei konstanter Geschwindigkeit, dann muss diese nicht korrigiert werden
