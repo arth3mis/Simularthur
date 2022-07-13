@@ -22,6 +22,7 @@ public class Strings_en_GB extends ListResourceBundle {
                 {"cancelSim", "Cancel simulation calculation"},
                 {"cancelSimShort", "Cancel calculation"},
                 {"resetWorld", "Complete world reset"},
+                {"resetWalls", "Reset walls"},
                 {"toggleEarth", "Toggle earth gravity & air density"},
                 {"toggleEarthShort", "Toggle earth-like"},
                 {"sampleSphere", "Spawn Example sphere"},

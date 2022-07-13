@@ -47,8 +47,6 @@ public class SimularthurGUI extends PApplet {
         smooth(8);
     }
 
-    // TODO DRAW ID FONT SCALE IS WRONG
-
     // Variablen (Simulation)
     Physicable world;
     float scale = 1;
@@ -265,7 +263,6 @@ public class SimularthurGUI extends PApplet {
             Button rw = new Button(0, stdH, () -> stringRes("resetWorld"), m2, 0, 0);
             rw.action = () -> {
                 resetWorld();
-                resetColors();
                 resetView(world.getSize());
             };
             Button cs = new Button(0, stdH, () -> stringRes("cancelSimShort"), m2, 0, 0);
@@ -375,6 +372,8 @@ public class SimularthurGUI extends PApplet {
             viewPane.add(tfDet, applyDet);
             // walls
             Label walls = new Label(fs1, () -> stringRes("walls"), m1, 0, 0);
+            Button resW = new Button(0, stdH, () -> stringRes("resetWalls"), m2, 0, indent);
+            resW.action = this::resetColors;
             Label wi = new Label(fs2, () -> stringRes("wallId")+" (1-6)", m2, 0, indent);
             Label wi2 = new Label(fs4, () -> stringRes("wallInfo"), m3, 0, indent);
             TextField tfW = new TextField(iw4, stdH, "", m3, 0, indent);
@@ -384,13 +383,19 @@ public class SimularthurGUI extends PApplet {
             Label c = new Label(fs2, () -> stringRes("color"), m2, 0, indent);
             TextField tfC = new TextField(iw3, stdH, "", m3, 0, indent);
             tfC.allowHex = tfC.integer = tfC.positive = true;
-            CheckBox v1 = new CheckBox(fs2, () -> stringRes("visAll"), m2, 0, indent);
-            v1.radio = true;
-            CheckBox v2 = new CheckBox(fs2, () -> stringRes("visBg"), m3, 0, indent);
-            v2.radio = true;
-            CheckBox v3 = new CheckBox(fs2, () -> stringRes("visNo"), m3, 0, indent);
-            v3.radio = true;
-            // todo actions
+            CheckBox[] vis = {
+                    new CheckBox(fs2, () -> stringRes("visNo"), m2, 0, indent),
+                    new CheckBox(fs2, () -> stringRes("visBg"), m3, 0, indent),
+                    new CheckBox(fs2, () -> stringRes("visAll"), m3, 0, indent)
+            };
+            vis[0].radio = vis[1].radio = vis[2].radio = true;
+            for (int i = 0; i < vis.length; i++) {
+                final int x = i;
+                vis[i].action = () -> {
+                    if (vis[x].checked) vis[(x+1)%3].checked = vis[(x+2)%3].checked = false;
+                    else vis[x].checked = true;
+                };
+            }
             Button applyW = new Button(0, stdH, () -> stringRes("loadApply"), m2, 0, indent);
             applyW.action = () -> {
                 if (tfW.input.isEmpty())
@@ -400,16 +405,23 @@ public class SimularthurGUI extends PApplet {
                     tfC.input = Integer.toHexString(boxSideColors[i]);
                     if (tfC.input.startsWith("ff") || tfC.input.startsWith("FF"))
                         tfC.input = tfC.input.substring(2);
-                } else if (tfC.input.length() == 2) {
-                    boxSideColors[i] = (Integer.parseInt(tfC.input) << 24) | boxSideColors[i] & 0xffffff;
+                    vis[boxSideVisible[i]+1].checked = true;
+                    vis[boxSideVisible[i]+1].action.run();
                 } else {
-                    int color = parseColor(tfC.input);
-                    if (color == 0) tfC.error = true;
-                    else boxSideColors[i] = color;
+                    if (tfC.input.length() == 2) {
+                        boxSideColors[i] = (Integer.parseInt(tfC.input) << 24) | boxSideColors[i] & 0xffffff;
+                    } else {
+                        int color = parseColor(tfC.input);
+                        if (color == 0) tfC.error = true;
+                        else boxSideColors[i] = color;
+                    }
+                    for (int j = 0; j < 3; j++)
+                        if (vis[j].checked)
+                            boxSideVisible[i] = j-1;
                 }
                 applyW.success = stdSuccess;
             };
-            viewPane.add(walls, wi,wi2,tfW, c,tfC, v1,v2,v3, applyW);
+            viewPane.add(walls, resW, wi,wi2,tfW, c,tfC, vis[0],vis[1],vis[2], applyW);
         }
         // Objekte manipulieren
         Label lm = new Label(fs1, () -> stringRes("manipulate"), m1, 0, 0);
@@ -752,7 +764,7 @@ public class SimularthurGUI extends PApplet {
         distance = stdDistance;
         yaw = stdYaw;
         pitch = stdPitch;
-        idDisplayFont = createFont("Arial", scale);
+        idDisplayFont = createFont("Arial", 100);
     }
 
     void resetWorld() {
@@ -1150,6 +1162,7 @@ public class SimularthurGUI extends PApplet {
                     "\n%s:".formatted(stringRes("display")),
                     "[↑ ← ↓ →] - %s".formatted(stringRes("camMove")),
                     "[V] - %s".formatted(stringRes("resetView")),
+                    "[W] - %s".formatted(stringRes("resetWalls")),
                     "[L] - %s/%s".formatted(stringRes("fixLight1"), stringRes("fixLight2")),
                     "[I] - %s".formatted(stringRes("drawId")),
                     "[T] - %s".formatted(stringRes("toggleTheme")),
@@ -1654,14 +1667,23 @@ public class SimularthurGUI extends PApplet {
             float strokeW = 2;
             noStroke();
             fill(Colors.CP_CB_FIELD_STROKE.get(theme));
-            rect(pl+refX, refY, h, h);
+            ellipseMode(CORNER);
+            if (radio) ellipse(pl+refX, refY, h, h);
+            else rect(pl+refX, refY, h, h);
             fill(Colors.CP_CB_FIELD_BG.get(theme));
-            rect(pl+refX+strokeW, refY+strokeW, h-2*strokeW, h-2*strokeW);
+            if (radio) ellipse(pl+refX+strokeW, refY+strokeW, h-2*strokeW, h-2*strokeW);
+            else rect(pl+refX+strokeW, refY+strokeW, h-2*strokeW, h-2*strokeW);
             if (checked) {
-                stroke(Colors.CP_CB_TICK.get(theme));
-                float sp = 1;
-                line(pl+refX+strokeW+sp, refY+strokeW+sp, pl+refX+h-strokeW-sp, refY+h-strokeW-sp);
-                line(pl+refX+strokeW+sp, refY+h-strokeW-sp, pl+refX+h-strokeW-sp, refY+strokeW+sp);
+                if (radio) {
+                    fill(Colors.CP_CB_TICK.get(theme));
+                    float sp = 3;
+                    ellipse(pl+refX+strokeW+sp, refY+strokeW+sp, h-2*strokeW-2*sp, h-2*strokeW-2*sp);
+                } else {
+                    stroke(Colors.CP_CB_TICK.get(theme));
+                    float sp = 2;
+                    line(pl + refX + strokeW + sp, refY + strokeW + sp, pl + refX + h - strokeW - sp, refY + h - strokeW - sp);
+                    line(pl + refX + strokeW + sp, refY + h - strokeW - sp, pl + refX + h - strokeW - sp, refY + strokeW + sp);
+                }
             }
 
             fill(Colors.CP_LB_TEXT.get(theme));
@@ -1719,9 +1741,9 @@ public class SimularthurGUI extends PApplet {
                 cbTheme.update();
             }
             case 'h' -> helpShown = true;
+            case 'w' -> resetColors();
             case 'r' -> {
                 resetWorld();
-                resetColors();
                 resetView(world.getSize());
             }
             case 'b' -> {

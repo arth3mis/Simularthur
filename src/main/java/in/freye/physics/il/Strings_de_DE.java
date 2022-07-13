@@ -22,6 +22,7 @@ public class Strings_de_DE extends ListResourceBundle {
                 {"cancelSim", "Aktive Simulations-Berechnung abbrechen"},
                 {"cancelSimShort", "Berechnung abbrechen"},
                 {"resetWorld", "Welt vollständig zurücksetzen"},
+                {"resetWalls", "Wände zurücksetzen"},
                 {"toggleEarth", "Erdgravitation & -luftdichte umschalten"},
                 {"toggleEarthShort", "Erdähnlichkeit umschalten"},
                 {"sampleSphere", "Beispiel-Kugel erschaffen"},
