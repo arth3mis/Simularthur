@@ -61,9 +61,9 @@ class PhysicableTest {
                 // Gravitation definieren, hier erdähnlich
                 .setGravity(new Vector3D(0, -9.81, 0))
                 // Kugel mit konstanter Geschwindigkeit erschaffen
-                .spawn(world.at(new Vector3D(5, 8, 5))
+                .spawn(world.createSpawnableAt(new Vector3D(5, 8, 5))
                         .withVelocityAndAccel(new Vector3D(1, -1, 0), Vector3D.ZERO)
-                        .newSphere(1, 1, 1))
+                        .ofTypeSphere(1, 1, 1))
                 // Zeit um 1s fortschreiten
                 .update(1);
 
@@ -108,8 +108,8 @@ class PhysicableTest {
                 // Raum mit Luft füllen
                 .setAirDensity(1.2)
                 // leichte, große Kugel erschaffen, die viel Luftwiderstand erfahren kann
-                .spawn(world.at(new Vector3D(5, 8, 5))
-                        .newSphere(2, Helper.calcSphereDensity(2, 0.1), 1));
+                .spawn(world.createSpawnableAt(new Vector3D(5, 8, 5))
+                        .ofTypeSphere(2, Helper.calcSphereDensity(2, 0.1), 1));
 
         // Konstante Geschwindigkeit mit Strömungswiderstand (Fw) und Gravitation (Fg) tritt ein für:
         // Fw = |Fg| (→ durch Masse m teilen)
@@ -142,7 +142,7 @@ class PhysicableTest {
                 // Gravitation definieren
                 .setGravity(new Vector3D(1, 0, 0))
                 // Kugel mit 75% Reflexionsstärke erschaffen
-                .spawn(world.at(new Vector3D(8.5, 5, 5)).newSphere(1, 1, 0.75))
+                .spawn(world.createSpawnableAt(new Vector3D(8.5, 5, 5)).ofTypeSphere(1, 1, 0.75))
                 // Zeit um 1s fortschreiten
                 .update(1);
 
@@ -192,19 +192,19 @@ class PhysicableTest {
                 // Die Kugelpaare haben einen großen z-Abstand und bewegen sich nicht in z-Richtung; keine Interaktion zwischen den Paaren
                 .spawn(
                         // 1. Kugelpaar (frontal, verschiedene Massen)
-                        world.at(new Vector3D(3, 5, 3))
+                        world.createSpawnableAt(new Vector3D(3, 5, 3))
                                 .withVelocityAndAccel(new Vector3D(v1, 0, 0), Vector3D.ZERO)
-                                .newSphere(1, m1, 1),  // Masse wird als Dichte übergeben, aber durch gleichen Radius stimmt das Verhältnis
-                        world.at(new Vector3D(7, 5, 3))
+                                .ofTypeSphere(1, m1, 1),  // Masse wird als Dichte übergeben, aber durch gleichen Radius stimmt das Verhältnis
+                        world.createSpawnableAt(new Vector3D(7, 5, 3))
                                 .withVelocityAndAccel(new Vector3D(v2, 0, 0), Vector3D.ZERO)
-                                .newSphere(1, m2, 1),
+                                .ofTypeSphere(1, m2, 1),
                         // 2. Kugelpaar (versetzt, gleiche Massen)
                         // Der Aufbau soll dem in der Grafik von Wikipedia gleichen: https://upload.wikimedia.org/wikipedia/commons/2/2c/Elastischer_sto%C3%9F_2D.gif.
-                        world.at(new Vector3D(5, 5, 7))
+                        world.createSpawnableAt(new Vector3D(5, 5, 7))
                                 .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
-                                .newSphere(1, 1, 1),
-                        world.at(new Vector3D(6 + Math.sqrt(2),5 + Math.sqrt(2),7))
-                                .newSphere(1, 1, 1))
+                                .ofTypeSphere(1, 1, 1),
+                        world.createSpawnableAt(new Vector3D(6 + Math.sqrt(2),5 + Math.sqrt(2),7))
+                                .ofTypeSphere(1, 1, 1))
                 // Zeit um etwas mehr als 1s fortschreiten.
                 // Kollisionen passieren ca. dort, durch sqrt() und andere Berechnungen nicht exakt bei 1s
                 .update(1.0000001);
@@ -268,11 +268,11 @@ class PhysicableTest {
         // Gravitation ist 0 (Standard)
         Physicable w1 = world
                 // massereiche Kugel im Zentrum erschaffen
-                .spawn(world.at(center).newSphere(1, centerDensity, 1))
+                .spawn(world.createSpawnableAt(center).ofTypeSphere(1, centerDensity, 1))
                 // Kugel im Orbit mit Startgeschwindigkeit (senkrecht zum Abstandsvektor) erschaffen
-                .spawn(world.at(startPos)
+                .spawn(world.createSpawnableAt(startPos)
                         .withVelocityAndAccel(startVel, Vector3D.ZERO)
-                        .newSphere(1, 1, 1));
+                        .ofTypeSphere(1, 1, 1));
         // Zeit um orbitale Umlaufzeit fortschreiten
         Physicable w2 = w1.update(orbitalPeriod/2);  // Halber Umlauf
         Physicable w3 = w2.update(orbitalPeriod/2);  // Ganzer Umlauf
@@ -605,10 +605,10 @@ class LoggingScenario {
                 .setGravity(new Vector3D(0, -1, 0));
         // Kugeln erschaffen
         Physicable w1 = w0.spawn(
-                w0.at(new Vector3D(5, 3, 2))
+                w0.createSpawnableAt(new Vector3D(5, 3, 2))
                         .withVelocityAndAccel(new Vector3D(1, 0, 0), Vector3D.ZERO)
-                        .newSphere(1, 1, 1),
-                w0.at(new Vector3D(8, 2.5, 2))
+                        .ofTypeSphere(1, 1, 1),
+                w0.createSpawnableAt(new Vector3D(8, 2.5, 2))
                         .immovable()
                         .newSphere(1, 1));
         // Zeit simulieren: Die Kollisionen treten zu t=1s und t=2s ein

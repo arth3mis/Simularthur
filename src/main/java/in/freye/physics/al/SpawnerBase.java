@@ -13,7 +13,7 @@ public abstract class SpawnerBase {
      * @param materialDensity Dichte des Materials, daraus wird mit dem Volumen die Masse berechnet
      * @param bounciness Dämpfungs- bzw. Reflexions-Faktor für Geschwindigkeit bei Kollisionen
      */
-    public Spawnable newSphere(double radius, double materialDensity, double bounciness) {
+    public Spawnable ofTypeSphere(double radius, double materialDensity, double bounciness) {
         return new Sphere(pos, vel, acc, movable, radius, materialDensity, bounciness);
     }
 }

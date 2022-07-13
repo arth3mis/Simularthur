@@ -12,7 +12,7 @@ import java.util.stream.IntStream;
 public interface Physicable {
 
     /** Beginnt die Erstellung eines Körpers */
-    Spawner at(Vector3D position);
+    Spawner createSpawnableAt(Vector3D position);
 
     /** Fügt einen oder mehrere Körper in die Welt ein */
     Physicable spawn(Spawnable... entities);
