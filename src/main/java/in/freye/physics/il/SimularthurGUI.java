@@ -407,7 +407,7 @@ public class SimularthurGUI extends PApplet {
             }
             Button applyW = new Button(0, stdH, () -> stringRes("loadApply"), m2, 0, indent);
             applyW.action = () -> {
-                if (tfW.input.isEmpty())
+                if (tfW.input.isEmpty() || Integer.parseInt(tfW.input) < 1 || Integer.parseInt(tfW.input) > 6)
                     return;
                 int i = mapW[Integer.parseInt(tfW.input) - 1];
                 if (tfC.input.isEmpty()) {
