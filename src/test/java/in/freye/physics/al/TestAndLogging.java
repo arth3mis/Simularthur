@@ -610,7 +610,7 @@ class LoggingScenario {
                         .ofTypeSphere(1, 1, 1),
                 w0.createSpawnableAt(new Vector3D(8, 2.5, 2))
                         .immovable()
-                        .newSphere(1, 1));
+                        .ofTypeSphere(1, 1));
         // Zeit simulieren: Die Kollisionen treten zu t=1s und t=2s ein
         w1.update(2.1);
     }

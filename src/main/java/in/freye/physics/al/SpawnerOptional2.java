@@ -9,9 +9,8 @@ public class SpawnerOptional2 extends SpawnerBase {
         movable = false;
     }
 
-    // todo deletable, only convenience
     /** Bounciness ist irrelevant für nicht bewegliche Körper */
-    public Spawnable newSphere(double radius, double materialDensity) {
+    public Spawnable ofTypeSphere(double radius, double materialDensity) {
         return super.ofTypeSphere(radius, materialDensity, 0);
     }
 }
