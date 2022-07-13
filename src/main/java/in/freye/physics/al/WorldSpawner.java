@@ -3,7 +3,6 @@ package in.freye.physics.al;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 
 public class WorldSpawner extends WorldSpawnerBase implements Spawner {
-
     public WorldSpawner(Vector3D pos) {
         this.pos = pos;
     }

@@ -7,16 +7,16 @@ import java.util.Arrays;
 import java.util.function.BiFunction;
 import java.util.stream.*;
 
-class Log {
-    static final Logger LOGGER = LogManager.getLogger("monitoring");
-}
+
+final Logger LOGGER = LogManager.getLogger("monitoring");
+
+
 /**
  * Interface für die Implementierung einer physikalischen Simulation.
  * Die Datenstruktur ist immutabel aufgebaut, jede Manipulation des simulierten Raums oder der enthaltenen Objekte
  * wird in neuen Objekten abgebildet.
  */
 interface Physicable {
-
     /** Beginnt die Erstellung eines Körpers */
     Spawner createSpawnableAt(Vector3D position);
 
@@ -26,7 +26,7 @@ interface Physicable {
     Physicable replace(long id, Spawnable entity);
 
     /** Simuliert die Änderungen im System, die im Zeitschritt deltaTime (Einheit Sekunde) passieren */
-    Physicable update(double deltaTime);
+    Physicable simulateTime(double deltaTime);
 
     /** Ändert die Beschleunigung durch allgemeine Gravitation des Raums */
     Physicable setGravity(Vector3D newGravity);
@@ -58,13 +58,21 @@ interface Physicable {
 
 
 interface SpawnerBase {
+    /**
+     * Erstellt eine neue Kugel
+     * @param radius Radius der Kugel
+     * @param materialDensity Dichte des Materials, daraus wird mit dem Volumen die Masse berechnet
+     * @param bounciness Dämpfungs- bzw. Reflexions-Faktor für Geschwindigkeit bei Kollisionen
+     */
     Spawnable ofTypeSphere(double radius, double materialDensity, double bounciness);
 }
+
 
 interface Spawner extends SpawnerBase {
     SpawnerBase withVelocityAndAccel(Vector3D velocity, Vector3D acceleration);
     SpawnerImmovable immovable();
 }
+
 
 interface SpawnerImmovable {
     Spawnable ofTypeSphere(double radius, double materialDensity);
@@ -72,7 +80,6 @@ interface SpawnerImmovable {
 
 
 interface Spawnable {
-
     long getId();
     ShapeType getType();
     Vector3D getPos();
@@ -91,8 +98,8 @@ interface Spawnable {
     Object[] getTypeData();
 }
 
-enum ShapeType {
 
+enum ShapeType {
     // Kugeln haben keinen eindeutigen cw-Wert.
     // Ich nehme hier eine ideale Flüssigkeit (ohne Viskosität) an, daher führt der Wert 0.1 zu guten Simulationen.
     SPHERE(0.1);
@@ -110,7 +117,6 @@ enum ShapeType {
 // Implementierung der Interfaces
 
 class World implements Physicable {
-
     /** Minimale Aktualisierungen pro Sekunde */
     private final double updateFreq;
     /** size: Größe des Raums; gravity: Vektor der Beschleunigung eines homogenen Gravitationsfelds (wie z.B. auf der Erde) */
@@ -188,18 +194,18 @@ class World implements Physicable {
         return new World(updateFreq, size, gravity, airDensity, entities.newWithout(entities.select(e -> e.id == id).getAny()));
     }
 
-    public Physicable update(double timeStep) {
+    public Physicable simulateTime(double timeStep) {
         assert Double.isFinite(timeStep) && timeStep >= 0 : "Zeit kann nur endliche Schritte und nicht rückwärts laufen";
         // Wenn eine höhere Update-Frequenz gefordert ist, als timeStep bietet, wird wiederholt aktualisiert
         World world = this;
         for (double dt = timeStep; dt > 0; dt -= 1/updateFreq)
-            world = new World(updateFreq, size, gravity, airDensity, world.simulateChanges(Math.min(dt, 1/updateFreq)));
+            world = new World(updateFreq, size, gravity, airDensity, world.calculateChanges(Math.min(dt, 1/updateFreq)));
         return world;
     }
 
     /** Wendet physikalische Berechnungen auf jeden Körper an */
-    private ImmutableList<Shape> simulateChanges(double dt) {
-        Log.LOGGER.info("Zeitschritt ({}s) wird simuliert.", V3.r(dt));
+    private ImmutableList<Shape> calculateChanges(double dt) {
+        LOGGER.info("Zeitschritt ({}s) wird simuliert.", V3.r(dt));
         // Filtern aller Körper, deren Masse eine signifikante Gravitation ausübt
         ImmutableList<Shape> gravityShapes = entities
                 .select(e1 -> e1.mass >= GRAVITY_SIGNIFICANT_MASS);
@@ -238,7 +244,7 @@ class World implements Physicable {
 
 
 abstract class Shape implements Spawnable {
-
+    /** Definiert eine (noch) nicht vorhandene ID */
     public static final long NO_ID = -1;
     private static long idCounter = 0;
     /**
@@ -332,7 +338,6 @@ abstract class Shape implements Spawnable {
 
 
 class Sphere extends Shape {
-
     private final double radius;
 
     Sphere(Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double radius, double density, double bounciness) {
@@ -360,16 +365,16 @@ class Sphere extends Shape {
         // Richtung: entgegen der Geschwindigkeit            |---- vereint Richtung und v² ----|
         Vector3D drag = vel.getNorm() == 0 ? Vector3D.ZERO : vel.scalarMultiply(-vel.getNorm() * 0.5 * type.dragCoefficient * airDensity * (Math.PI*radius*radius) / mass);
         // acc = Summe aller Beschleunigungen
-        Log.LOGGER.info("ID={}; a = {}m/s² = {}_selfAcc + {}_gravity + {}_eGravity + {}_drag",
+        LOGGER.info("ID={}; a = {}m/s² = {}_selfAcc + {}_gravity + {}_eGravity + {}_drag",
                 id, V3.r(selfAcc.add(gravity).add(eGravity).add(drag)), V3.r(selfAcc), V3.r(gravity), V3.r(eGravity), V3.r(drag));
         return new Sphere(id, pos, vel, selfAcc.add(gravity).add(eGravity).add(drag), selfAcc, movable, radius, density, bounciness);
     }
 
     Shape applyMovement(double dt) {
         if (!movable) return this;
-        Log.LOGGER.info("ID={}; p({}s) = {}m = {}m/s² * ({}s)² + {}m/s * {}s + {}m",
+        LOGGER.info("ID={}; p({}s) = {}m = {}m/s² * ({}s)² + {}m/s * {}s + {}m",
                 id, V3.r(dt), V3.r(pos.add(dt*dt, acc.scalarMultiply(0.5)).add(dt,vel)), V3.r(acc), V3.r(dt), V3.r(vel), V3.r(dt), V3.r(pos));
-        Log.LOGGER.info("ID={}; v({}s) = {}m/s = {}m/s² * {}s + {}m/s",
+        LOGGER.info("ID={}; v({}s) = {}m/s = {}m/s² * {}s + {}m/s",
                 id, V3.r(dt), V3.r(vel.add(dt, acc)), V3.r(acc), V3.r(dt), V3.r(vel));
         return new Sphere(id, pos.add(dt*dt, acc.scalarMultiply(0.5)).add(dt,vel), vel.add(dt, acc), acc, selfAcc, movable, radius, density, bounciness);
     }
@@ -404,7 +409,7 @@ class Sphere extends Shape {
             }
         }
         if (!p.equals(pos) || !v.equals(vel))
-            Log.LOGGER.info("ID={}; Wandkollision: p'={}m; v'={}m/s", id, V3.r(p), V3.r(v));
+            LOGGER.info("ID={}; Wandkollision: p'={}m; v'={}m/s", id, V3.r(p), V3.r(v));
         return new Sphere(id, p, v, acc, selfAcc, movable, radius, density, bounciness);
     }
 
@@ -423,7 +428,7 @@ class Sphere extends Shape {
                     // tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
                     double tColl = -(prev.vel.getNorm()/prev.acc.getNorm())
                             + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
-                    Log.LOGGER.info("ID={}; Kollision mit ID={} (p{} = {}): Korrekturen: pColl = {}m; vColl = {}m/s",
+                    LOGGER.info("ID={}; Kollision mit ID={} (p{} = {}): Korrekturen: pColl = {}m; vColl = {}m/s",
                             id, b.id, b.id, V3.r(b.pos), V3.r(pColl), Double.isNaN(tColl) ? V3.r(vel) : V3.r(prev.vel.add(tColl, prev.acc)));
                     // tColl ist NaN bei konstanter Geschwindigkeit, dann muss diese nicht korrigiert werden
                     return new Sphere(id, pColl, Double.isNaN(tColl) ? vel : prev.vel.add(tColl, prev.acc), a.acc, a.selfAcc, a.movable, a.radius, a.density, a.bounciness);
@@ -443,7 +448,7 @@ class Sphere extends Shape {
                     Vector3D v = a.vel.add((b.movable ? 2*b.mass/(a.mass+b.mass) : 2)
                             * b.vel.subtract(a.vel).dotProduct(a.pos.subtract(b.pos))
                             / a.pos.subtract(b.pos).getNormSq(), a.pos.subtract(b.pos)).scalarMultiply(bounciness);
-                    Log.LOGGER.info("ID={}; Kollision mit ID={} (v{} = {}): Impulserhaltung: v' = {}m/s", id, b.id, b.id, V3.r(b.vel), V3.r(v));
+                    LOGGER.info("ID={}; Kollision mit ID={} (v{} = {}): Impulserhaltung: v' = {}m/s", id, b.id, b.id, V3.r(b.vel), V3.r(v));
                     return new Sphere(id, a.pos, v, a.acc, a.selfAcc, a.movable, a.radius, a.density, a.bounciness);});
     }
 
@@ -459,7 +464,6 @@ class Sphere extends Shape {
                 .map(e -> (Sphere) e).filter(e -> s.pos.distance(e.pos) + 1.0e-10 < s.radius + e.radius);
     }
 
-    @Override
     public Object[] getTypeData() {
         return new Object[]{ radius };
     }
@@ -467,16 +471,9 @@ class Sphere extends Shape {
 
 
 abstract class WorldSpawnerBase implements SpawnerBase {
-
     protected Vector3D pos = Vector3D.ZERO, vel = Vector3D.ZERO, acc = Vector3D.ZERO;
     protected boolean movable = true;
 
-    /**
-     * Erstellt eine neue Kugel
-     * @param radius Radius der Kugel
-     * @param materialDensity Dichte des Materials, daraus wird mit dem Volumen die Masse berechnet
-     * @param bounciness Dämpfungs- bzw. Reflexions-Faktor für Geschwindigkeit bei Kollisionen
-     */
     public Spawnable ofTypeSphere(double radius, double materialDensity, double bounciness) {
         return new Sphere(pos, vel, acc, movable, radius, materialDensity, bounciness);
     }
@@ -484,7 +481,6 @@ abstract class WorldSpawnerBase implements SpawnerBase {
 
 
 class WorldSpawner extends WorldSpawnerBase implements Spawner {
-
     public WorldSpawner(Vector3D pos) {
         this.pos = pos;
     }
@@ -500,7 +496,6 @@ class WorldSpawner extends WorldSpawnerBase implements Spawner {
 
 
 class WorldSpawnerMovable extends WorldSpawnerBase implements SpawnerBase {
-
     WorldSpawnerMovable(Vector3D pos, Vector3D vel, Vector3D acc) {
         this.pos = pos;
         this.vel = vel;
@@ -510,7 +505,6 @@ class WorldSpawnerMovable extends WorldSpawnerBase implements SpawnerBase {
 
 
 class WorldSpawnerImmovable extends WorldSpawnerBase implements SpawnerImmovable {
-
     WorldSpawnerImmovable(Vector3D pos) {
         this.pos = pos;
         movable = false;
@@ -526,7 +520,6 @@ class WorldSpawnerImmovable extends WorldSpawnerBase implements SpawnerImmovable
  * Hilfsklasse für Vektoren
  */
 class V3 {
-
     /** Testet den Vektor, dass er nicht null ist und keine NaN/Infinity-Werte enthält */
     public static boolean isValidVector(Vector3D... v) {
         return v != null && v.length > 0 && Arrays.stream(v).flatMapToDouble(u -> Arrays.stream(u.toArray())).allMatch(Double::isFinite);

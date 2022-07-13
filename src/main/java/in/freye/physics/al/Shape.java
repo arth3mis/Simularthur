@@ -5,7 +5,7 @@ import org.eclipse.collections.api.list.ImmutableList;
 
 
 public abstract class Shape implements Spawnable {
-
+    /** Definiert eine (noch) nicht vorhandene ID */
     public static final long NO_ID = -1;
     private static long idCounter = 0;
     /**

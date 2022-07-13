@@ -9,7 +9,6 @@ import java.util.function.BiFunction;
  * Hilfsklasse für Vektoren
  */
 public class V3 {
-
     /** Testet den Vektor, dass er nicht null ist und keine NaN/Infinity-Werte enthält */
     public static boolean isValidVector(Vector3D... v) {
         return v != null && v.length > 0 && Arrays.stream(v).flatMapToDouble(u -> Arrays.stream(u.toArray())).allMatch(Double::isFinite);

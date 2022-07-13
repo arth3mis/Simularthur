@@ -65,7 +65,7 @@ class PhysicableTest {
                         .withVelocityAndAccel(new Vector3D(1, -1, 0), Vector3D.ZERO)
                         .ofTypeSphere(1, 1, 1))
                 // Zeit um 1s fortschreiten
-                .update(1);
+                .simulateTime(1);
 
         // pX: x-Komponente der Position; vY: y-Komponente der Geschwindigkeit; ...
         assertAll(
@@ -121,7 +121,7 @@ class PhysicableTest {
 
         // Aktualisieren, bis a und g denselben Betrag haben (Gesamtbeschleunigung = 0)
         do {
-            w1 = w1.update(1/updateFreq);
+            w1 = w1.simulateTime(1/updateFreq);
         } while (w1.getEntities()[0].getAcc().getNorm() > tolerance);
 
         // Die Geschwindigkeit muss jetzt den Wert v haben (siehe oben)
@@ -144,7 +144,7 @@ class PhysicableTest {
                 // Kugel mit 75% Reflexionsstärke erschaffen
                 .spawn(world.createSpawnableAt(new Vector3D(8.5, 5, 5)).ofTypeSphere(1, 1, 0.75))
                 // Zeit um 1s fortschreiten
-                .update(1);
+                .simulateTime(1);
 
         // pX: x-Komponente der Position; vY: y-Komponente der Geschwindigkeit; ...
         assertAll(
@@ -207,7 +207,7 @@ class PhysicableTest {
                                 .ofTypeSphere(1, 1, 1))
                 // Zeit um etwas mehr als 1s fortschreiten.
                 // Kollisionen passieren ca. dort, durch sqrt() und andere Berechnungen nicht exakt bei 1s
-                .update(1.0000001);
+                .simulateTime(1.0000001);
 
         assertAll(
                 // 1. Kollision:
@@ -274,8 +274,8 @@ class PhysicableTest {
                         .withVelocityAndAccel(startVel, Vector3D.ZERO)
                         .ofTypeSphere(1, 1, 1));
         // Zeit um orbitale Umlaufzeit fortschreiten
-        Physicable w2 = w1.update(orbitalPeriod/2);  // Halber Umlauf
-        Physicable w3 = w2.update(orbitalPeriod/2);  // Ganzer Umlauf
+        Physicable w2 = w1.simulateTime(orbitalPeriod/2);  // Halber Umlauf
+        Physicable w3 = w2.simulateTime(orbitalPeriod/2);  // Ganzer Umlauf
 
         // Geschwindigkeit weicht weniger ab als Position
         double posTolerance = 1e-2;
@@ -612,6 +612,6 @@ class LoggingScenario {
                         .immovable()
                         .ofTypeSphere(1, 1));
         // Zeit simulieren: Die Kollisionen treten zu t=1s und t=2s ein
-        w1.update(2.1);
+        w1.simulateTime(2.1);
     }
 }

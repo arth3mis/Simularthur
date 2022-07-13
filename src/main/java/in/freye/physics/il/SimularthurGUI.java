@@ -34,6 +34,30 @@ public class SimularthurGUI extends PApplet {
         }
     }
 
+
+
+    /** Demonstration, wie die Interfaces der AL angewendet werden können */
+    void test() {
+        Physicable w = World
+                .create(60, new Vector3D(1,1,1))
+                .setGravity(new Vector3D(0, -9.81, 0))
+                .setAirDensity(1.2);
+
+        Spawnable s = w
+                .createSpawnableAt(new Vector3D(.5,.5,.5))
+                .withVelocityAndAccel(new Vector3D(1,1,0), Vector3D.ZERO)
+                .ofTypeSphere(1,1,1);
+
+        w = w.spawn(s);
+
+        w = w.simulateTime(1);
+
+        Spawnable[] s1 = w.getEntities();
+    }
+
+
+
+
     @Override
     public void settings() {
         // setup string resources
@@ -105,6 +129,7 @@ public class SimularthurGUI extends PApplet {
     Button cpLangDe, cpLangEn;
     List<Button> globalButtons;
     CPPane startPane, currentPane, entEditPane;
+    Label lbRealTime;
     CheckBox cbTheme, cbDrawId, cbCamLight;
     TextField currentInput;
     long currEnt = Shape.NO_ID;
@@ -138,15 +163,6 @@ public class SimularthurGUI extends PApplet {
 
     // Style
     Theme theme = Theme.DARK;
-
-    void test() {
-        Spawnable s = World
-                .create(60, new Vector3D(1,1,1))
-                .createSpawnableAt(new Vector3D(.5,.5,.5))
-//                .withVelocityAndAccel(new Vector3D(1,1,0), Vector3D.ZERO)
-//                .immovable()
-                .ofTypeSphere(1,1,1);
-    }
 
     @Override
     public void setup() {
@@ -213,6 +229,7 @@ public class SimularthurGUI extends PApplet {
                     + (braveNewWorld != null ? " ("+stringRes("running").toLowerCase()+")" : ""),
                 5, 0, indent).setFont("Monospaced");
         timeInfo3.color = () -> Colors.successError(timeToSimulate < realTimeThreshold, theme);
+        lbRealTime = timeInfo3;
         startPane.add(timeInfo, timeInfo2, timeInfo3);
         Label set = new Label(fs1, () -> stringRes("settings"), m1, 0, 0);
         startPane.add(set);
@@ -1010,7 +1027,7 @@ public class SimularthurGUI extends PApplet {
                 currentTimeDelta = Math.min(timeToSimulate, simSpeed/2);  // Maximaler Sim-Schritt: 0.5 Echtzeit-Sekunden
                 braveNewWorld = new CompletableFuture<>();
                 Executors.newCachedThreadPool().submit(() -> {
-                    braveNewWorld.complete(world.update(currentTimeDelta));
+                    braveNewWorld.complete(world.simulateTime(currentTimeDelta));
                 });
             }
         } else {
@@ -1153,6 +1170,15 @@ public class SimularthurGUI extends PApplet {
             fill(Colors.CP_SEP_LINE.get(theme));
             float sepWeight = 4;
             rect(cpWidth, 0, sepWeight, height);
+        }
+        // Echtzeit Info
+        if (currentPane != startPane || !cpExpanded) {
+            pushStyle();
+            textAlign(LEFT, CENTER);
+            lbRealTime.noAlign = true;
+            lbRealTime.draw(cpExpanded ? cpWidth + 15 : 15, height - cpToolbarH/1.7f);
+            lbRealTime.noAlign = false;
+            popStyle();
         }
         // Hilfe
         if (helpShown) {
@@ -1424,7 +1450,7 @@ public class SimularthurGUI extends PApplet {
         CPPane container;
         float w, h, mt, mb, pl;  // width, height, margin-top, margin-bottom, padding-left
         PFont font;
-        boolean off, offWhenSim;
+        boolean off, offWhenSim, noAlign;
 
         CPItem(float w, float h, float fontSize) {
             this.w = w;
@@ -1469,7 +1495,7 @@ public class SimularthurGUI extends PApplet {
             if (color != null)
                 fill(color.get());
             textFont(font);
-            textAlign(LEFT, TOP);
+            if (!noAlign) textAlign(LEFT, TOP);
             text(text.get(), pl+refX, refY);
             popMatrix(); popStyle();
         }
@@ -2011,7 +2037,7 @@ public class SimularthurGUI extends PApplet {
                 .limit(n)
                 .map(p -> w0.createSpawnableAt(p).ofTypeSphere(0.02, 1, 0.9))
                 .toList().toArray(new Spawnable[0]));
-        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.getId(), new Entity(e, color(20,0,random(200,250)))));
+        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.getId(), new Entity(e, color(random(150,200),0,random(200,250)))));
         return w1;
     }
 
