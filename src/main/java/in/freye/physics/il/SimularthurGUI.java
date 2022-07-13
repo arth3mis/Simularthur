@@ -36,7 +36,9 @@ public class SimularthurGUI extends PApplet {
 
 
 
-    /** Demonstration, wie die Interfaces der AL angewendet werden können */
+    /**
+     * Demonstration, wie die Interfaces der AL angewendet werden können
+     */
     void test() {
         Physicable w = World
                 .create(60, new Vector3D(1,1,1))
@@ -76,7 +78,7 @@ public class SimularthurGUI extends PApplet {
     float scale = 1;
     boolean running;
     double simSpeed = 1;
-    double updateFreq = 60, updateFreqSimStart;
+    double updateFreq = 100, updateFreqSimStart;
 
     // Variablen (Verbindung Simulation & Display)
     double timeToSimulate, currentTimeDelta;
@@ -123,7 +125,7 @@ public class SimularthurGUI extends PApplet {
     float stdSuccess = 0.2f;
     PFont stdFont;
     DecimalFormat fmt;
-    int dPrec = 6, vecPrec = 3;  // double format Präzision (normal und in Vektoren)
+    int dPrec = 6, vecPrec = 3;  // Double-Format Präzision (normal und in Vektoren)
     boolean helpShown = false; // todo set true for release
     Button cpBtnExpand, cpBtnHelp;
     Button cpLangDe, cpLangEn;
@@ -240,7 +242,7 @@ public class SimularthurGUI extends PApplet {
         CPPane simPane = simSet.newChild();
         {
             // Sim Geschwindigkeit
-            Label speed = new Label(fs2, () -> stringRes("speed") + " (0.0001-100000)", 0, 0, 0);
+            Label speed = new Label(fs2, () -> stringRes("speed"), 0, 0, 0);
             simPane.add(speed);
             TextField tfSpeed = new TextField(iw3, stdH, "", m3, 0, 0);
             tfSpeed.initD = () -> simSpeed;
@@ -249,7 +251,7 @@ public class SimularthurGUI extends PApplet {
             applySpeed.action = () -> {
                 try {
                     double d = parseD(tfSpeed.input);
-                    if (d >= 0.0001 && d <= 100000)
+                    if (d > 0)
                         setSimSpeed(d);
                     else throw new ParseException("", 0);
                 } catch (ParseException e) {
@@ -2035,9 +2037,9 @@ public class SimularthurGUI extends PApplet {
                 .setAirDensity(1.2);
         Physicable w1 = w0.spawn(Stream.generate(() -> w0.randomPos(0.4).add(new Vector3D(0,0.3,0)))
                 .limit(n)
-                .map(p -> w0.createSpawnableAt(p).ofTypeSphere(0.02, 1, 0.9))
+                .map(p -> w0.createSpawnableAt(p).ofTypeSphere(0.02, 1, 0.95))
                 .toList().toArray(new Spawnable[0]));
-        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.getId(), new Entity(e, color(random(150,200),0,random(200,250)))));
+        Arrays.stream(w1.getEntities()).forEach(e -> entities.put(e.getId(), new Entity(e, color(random(220,250),random(80,160),0))));
         return w1;
     }
 
@@ -2057,52 +2059,4 @@ public class SimularthurGUI extends PApplet {
         entities.put(shapes[1].getId(), new Entity(shapes[1], color(255)));
         return w0;
     }
-
-    // Gravitations-Bouncing
-//        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
-//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*d, 0.8)).newSphere(0.04, 1, 1)))
-//                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
-//        world = DoubleStream.iterate(0.1, d -> d < 0.9, d -> d + 0.1)
-//                .mapToObj(d -> world.spawn(world.at(new Vector3D(d, 0.5+0.4*(1-d), 0.65)).newSphere(0.04, 1, 1)))
-//                .reduce(world, (a, b) -> a.spawn(b.getEntities()));
-
-    // Einzel-Kollision + Impulserhaltung ("conservation of momentum")
-//        world = world.spawn(
-//                world.at(new Vector3D(0.8, 0.5, 0.4))
-//                        .withVelocityAndAccel(new Vector3D(-0.5,0,0), Vector3D.ZERO)
-//                        .newSphere(0.05,1, 1),
-//                world.at(new Vector3D(0.2, 0.45, 0.4))
-//                        .withVelocityAndAccel(new Vector3D(0.5,0,0), Vector3D.ZERO)
-//                        .newSphere(0.05,1, 1)
-//        );
-
-    // Überlappende Körper + Reaktion
-//        world = world.spawn(
-//                world.at(new Vector3D(0.5, 0.501, 0.4))
-//                        .newSphere(0.05,1,1),
-//                world.at(new Vector3D(0.5, 0.5, 0.4))
-//                        .newSphere(0.05,1,1)
-//        );
-
-    // Fehler in wallCollision Korrekturrechnung, Notfallberechnung
-//        world = world.spawn(world.at(new Vector3D(0.5,0.04,0.5))
-//                .withVelocityAndAccel(new Vector3D(0, -0.2, 0), Vector3D.ZERO)
-//                .newSphere(0.05,1,1));
-
-
-//        // Ellipsenbahn -> Kreisbahn irgendwann; needs 10x10x10 world size
-//        double m = 1e12;
-//        double r = 0.5;
-//        world = world.spawn(
-//                world.at(new Vector3D(0.5,0.5,0.5).scalarMultiply(10))
-//                        .immovable()
-//                        .newSphere(0.1, calcSphereDensity(0.1, m)),
-//                world.at(new Vector3D(5 - r,5,5))
-//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+3), Vector3D.ZERO)
-//                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1),
-//                world.at(new Vector3D(5 - r*0.8,5,5))
-//                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r*0.8, m)+0.2), Vector3D.ZERO)
-//                        .newSphere(0.03, calcSphereDensity(0.03, 1), 1));
-
-    // todo Kugelsternhaufen um massereiches Objekt
 }
