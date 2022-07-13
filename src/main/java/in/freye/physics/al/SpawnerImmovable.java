@@ -1,5 +1,5 @@
 package in.freye.physics.al;
 
-public interface SpawningOptional2 extends SpawningBase {
+public interface SpawnerImmovable {
     Spawnable ofTypeSphere(double radius, double materialDensity);
 }

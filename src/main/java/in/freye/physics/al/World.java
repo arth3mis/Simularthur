@@ -55,7 +55,7 @@ public class World implements Physicable {
 
     public Spawner createSpawnableAt(Vector3D position) {
         assert V3.compareComponents(position, size, (p, s) -> p >= 0 && p < s) : "Die Position muss im Raum liegen";
-        return new Spawner(position);
+        return new WorldSpawner(position);
     }
 
     public Physicable spawn(Spawnable... entities) {

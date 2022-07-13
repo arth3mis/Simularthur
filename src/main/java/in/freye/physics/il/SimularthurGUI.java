@@ -107,7 +107,7 @@ public class SimularthurGUI extends PApplet {
     CPPane startPane, currentPane, entEditPane;
     CheckBox cbTheme, cbDrawId, cbCamLight;
     TextField currentInput;
-    long currEnt = -1;
+    long currEnt = Shape.NO_ID;
     long nextId = 0;
 
     // Ressourcen
@@ -489,7 +489,7 @@ public class SimularthurGUI extends PApplet {
                 Spawnable target = getEnt(currEnt);
                 if (target == null || target.getType() != ShapeType.SPHERE) {
                     currentPane = applyAll.container.caller.container;
-                    currEnt = -1;
+                    currEnt = Shape.NO_ID;
                     tfId.error = true;
                 }
                 CPItem[] edits = { tfP, tfV, tfA, move, tfM, tfB };
@@ -516,10 +516,10 @@ public class SimularthurGUI extends PApplet {
                         newId = manipulateSphere(entities.get(currEnt), (Vector3D) o[0], (Vector3D) o[1], (Vector3D) o[2],
                                 (boolean) o[3], r, calcSphereDensity(r, (double) o[4]), (double) o[5]);
                     } catch (Exception e) {
-                        newId = -1;
+                        newId = Shape.NO_ID;
                     }
                 }
-                if (newId != -1) {
+                if (newId != Shape.NO_ID) {
                     currEnt = newId;
                     tfId.input = ""+newId;
                     applyAll.success = stdSuccess;
@@ -565,7 +565,7 @@ public class SimularthurGUI extends PApplet {
             TextField tfF = new TextField(iw4, stdH, "1", m3, 0, indent);
             Button applyO = new Button(0, stdH, () -> stringRes("apply"), m2, 0, indent);
             applyO.action = () -> {
-                long[] ids={-1,-1};
+                long[] ids={Shape.NO_ID, Shape.NO_ID};
                 Vector3D vel = parseV3(tfV.input);
                 double factor = 0;
                 boolean error = false;
@@ -583,7 +583,7 @@ public class SimularthurGUI extends PApplet {
                         .scalarMultiply(calcCircularOrbitVel(Vector3D.distance(s1.getPos(), s2.getPos()), s2.getMass()))
                         .scalarMultiply(factor);
                 long newId = manipulateSphere(entities.get(ids[0]), s1.getPos(), vel, s1.getSelfAcc(), true, (double)s1.getTypeData()[0], s1.getDensity(), s1.getBounciness());
-                if (newId != -1) {
+                if (newId != Shape.NO_ID) {
                     applyO.success = stdSuccess;
                     tf1.input = ""+newId;
                 }
@@ -724,7 +724,7 @@ public class SimularthurGUI extends PApplet {
 
         currentPane = startPane;
         currentInput = null;
-        currEnt = -1;
+        currEnt = Shape.NO_ID;
     }
 
     double round2Non0s(double d, int prec) {
@@ -738,13 +738,13 @@ public class SimularthurGUI extends PApplet {
     }
 
     String minId() {
-        long l = Arrays.stream(world.getEntities()).mapToLong(Spawnable::getId).min().orElse(-1);
-        if (l == -1) return "";
+        long l = Arrays.stream(world.getEntities()).mapToLong(Spawnable::getId).min().orElse(Shape.NO_ID);
+        if (l == Shape.NO_ID) return "";
         return ""+l;
     }
     String maxId() {
-        long l = Arrays.stream(world.getEntities()).mapToLong(Spawnable::getId).max().orElse(-1);
-        if (l == -1) return "";
+        long l = Arrays.stream(world.getEntities()).mapToLong(Spawnable::getId).max().orElse(Shape.NO_ID);
+        if (l == Shape.NO_ID) return "";
         return ""+l;
     }
 
@@ -798,7 +798,7 @@ public class SimularthurGUI extends PApplet {
     long manipulateSphere(Entity e, Vector3D pos, Vector3D vel, Vector3D selfAcc, boolean movable, double radius, double density, double bounciness) {
         if (!V3.isValidVector(pos, vel, selfAcc) || radius <= 0 || density <= 0 || bounciness < 0 || bounciness > 1
             || !V3.compareComponents(pos, world.getSize(), (a,b) -> a >= 0 && a < b))
-            return -1;
+            return Shape.NO_ID;
         Spawnable s1;
         // pos besetzt?
         Physicable[] w = {world};
@@ -817,7 +817,7 @@ public class SimularthurGUI extends PApplet {
         resetColors();
         entities = new HashMap<>();
         Physicable w0 = w.get();
-        if (currentPane == entEditPane && currEnt != -1 && Arrays.stream(w0.getEntities()).noneMatch(e -> e.getId() == currEnt))
+        if (currentPane == entEditPane && currEnt != Shape.NO_ID && Arrays.stream(w0.getEntities()).noneMatch(e -> e.getId() == currEnt))
             currentPane = entEditPane.caller.container;
         running = false;
         worldSimStart = w0;
@@ -862,7 +862,7 @@ public class SimularthurGUI extends PApplet {
     }
 
     void resetToStartWorld() {
-        if (currentPane == entEditPane && currEnt != -1 && Arrays.stream(worldSimStart.getEntities()).noneMatch(e -> e.getId() == currEnt))
+        if (currentPane == entEditPane && currEnt != Shape.NO_ID && Arrays.stream(worldSimStart.getEntities()).noneMatch(e -> e.getId() == currEnt))
             return;
         worldEdits.add(new WorldSet(worldSimStart, () -> {
             resetSimulatedTime();
@@ -1349,7 +1349,7 @@ public class SimularthurGUI extends PApplet {
         }
         @Override
         public Physicable apply(Physicable target) {
-            assert id != -1;
+            assert id != Shape.NO_ID;
             entities.remove(id);
             if (shape != null)
                 entities.put(ent.id, ent);
