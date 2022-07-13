@@ -139,6 +139,15 @@ public class SimularthurGUI extends PApplet {
     // Style
     Theme theme = Theme.DARK;
 
+    void test() {
+        Spawnable s = World
+                .create(60, new Vector3D(1,1,1))
+                .createSpawnableAt(new Vector3D(.5,.5,.5))
+//                .withVelocityAndAccel(new Vector3D(1,1,0), Vector3D.ZERO)
+//                .immovable()
+                .ofTypeSphere(1,1,1);
+    }
+
     @Override
     public void setup() {
         windowTitle(stringRes("windowTitle"));
@@ -799,7 +808,7 @@ public class SimularthurGUI extends PApplet {
         }
         // neue kugel
         if (movable) s1 = w[0].createSpawnableAt(pos).withVelocityAndAccel(vel, selfAcc).ofTypeSphere(radius, density, bounciness);
-        else s1 = w[0].createSpawnableAt(pos).immovable().newSphere(radius, density);
+        else s1 = w[0].createSpawnableAt(pos).immovable().ofTypeSphere(radius, density);
         worldEdits.add(new WorldReplace(e.id, s1, e.color));
         return s1.getId();
     }
@@ -1956,7 +1965,7 @@ public class SimularthurGUI extends PApplet {
         Spawnable[] stars = {
                 w0.createSpawnableAt(new Vector3D(0.5,0.5,0.5))
                         .immovable()
-                        .newSphere(0.1, calcSphereDensity(0.1, m)),
+                        .ofTypeSphere(0.1, calcSphereDensity(0.1, m)),
                 w0.createSpawnableAt(new Vector3D(0.5 - r,0.5,0.5))
                         .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(r, m)+startVelDeviation), Vector3D.ZERO)
                         .ofTypeSphere(0.03, calcSphereDensity(0.03, 1), 1)};
@@ -2015,7 +2024,7 @@ public class SimularthurGUI extends PApplet {
                         .ofTypeSphere(1, 1, 1),
                 w0.createSpawnableAt(new Vector3D(8, 2.5, 2))
                         .immovable()
-                        .newSphere(1, 1)
+                        .ofTypeSphere(1, 1)
         };
         w0 = w0.spawn(shapes);
         entities.put(shapes[0].getId(), new Entity(shapes[0], color(230, 10, 190)));
