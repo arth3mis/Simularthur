@@ -317,7 +317,7 @@ abstract class Shape implements Spawnable {
      * @param detectEntities Körper im Raum (vor Korrektur)
      * @param deflectionEntities Körper im Raum (nach Korrektur)
      */
-    abstract Shape applyEntityCollisionDeflections(ImmutableList<Shape> detectEntities, ImmutableList<Shape> deflectionEntities/*, Shape prev*/);
+    abstract Shape applyEntityCollisionDeflections(ImmutableList<Shape> detectEntities, ImmutableList<Shape> deflectionEntities);
 
     // Getter-Methoden
     public long getId() { return id; }
@@ -398,10 +398,6 @@ class Sphere extends Shape {
                 // => tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
                 double tColl = prev.acc.toArray()[i] == 0 ? 0 : -(prev.vel.toArray()[i] / prev.acc.toArray()[i])
                         + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) - 2 * (prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
-                // Wenn Berechnung keinen reellen Wert ergibt, drehe Vorzeichen von (p-pColl)
-                // tColl = -(v/a) + sqrt((v/a)² - 2(pColl-p)/a)
-                if (Double.isNaN(tColl)) tColl = -(prev.vel.getNorm()/prev.acc.getNorm())
-                        + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (pColl - prev.pos.getNorm()) / prev.acc.getNorm());
                 // Geschwindigkeitskorrektur und Invertierung der Komponente
                 // (Impulserhaltung: Keine Geschwindigkeit auf Wand "übertragbar" -> 100% Reflexion)
                 double v1 = prev.vel.add(tColl, prev.acc).toArray()[i] * bounciness

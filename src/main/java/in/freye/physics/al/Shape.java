@@ -75,7 +75,7 @@ public abstract class Shape implements Spawnable {
      * @param detectEntities Körper im Raum (vor Korrektur)
      * @param deflectionEntities Körper im Raum (nach Korrektur)
      */
-    abstract Shape applyEntityCollisionDeflections(ImmutableList<Shape> detectEntities, ImmutableList<Shape> deflectionEntities/*, Shape prev*/);
+    abstract Shape applyEntityCollisionDeflections(ImmutableList<Shape> detectEntities, ImmutableList<Shape> deflectionEntities);
 
     // Getter-Methoden
     public long getId() { return id; }

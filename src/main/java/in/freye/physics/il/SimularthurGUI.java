@@ -5,11 +5,7 @@ import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import processing.core.*;
 import processing.event.MouseEvent;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -29,7 +25,6 @@ public class SimularthurGUI extends PApplet {
                 break;
             } catch (Exception e) {
                 e.printStackTrace();
-                return;  // todo debug
             }
         }
     }
@@ -40,8 +35,7 @@ public class SimularthurGUI extends PApplet {
      * Demonstration, wie die Interfaces der AL angewendet werden können
      */
     void test() {
-        Physicable w = World
-                .create(60, new Vector3D(1,1,1))
+        Physicable w = World.create(60, new Vector3D(1,1,1))
                 .setGravity(new Vector3D(0, -9.81, 0))
                 .setAirDensity(1.2);
 
@@ -69,7 +63,7 @@ public class SimularthurGUI extends PApplet {
         setLanguage(0);
 
         fullScreen(P3D);
-//        size(1400, 950, P3D);
+//        size(1900, 950, P3D);
         smooth(8);
     }
 
@@ -103,7 +97,7 @@ public class SimularthurGUI extends PApplet {
     float mouseWheelDelta = 0;
     PVector camEye = new PVector(), camCenter = new PVector();
     boolean[] moveCam = new boolean[6];
-    float moveSpeedFactor = 70f;
+    float moveSpeedFactor = 100f;
     boolean drawId = false;
     PFont idDisplayFont;
     PShape boxSide;
@@ -126,7 +120,7 @@ public class SimularthurGUI extends PApplet {
     PFont stdFont;
     DecimalFormat fmt;
     int dPrec = 6, vecPrec = 3;  // Double-Format Präzision (normal und in Vektoren)
-    boolean helpShown = false; // todo set true for release
+    boolean helpShown = true;
     Button cpBtnExpand, cpBtnHelp;
     Button cpLangDe, cpLangEn;
     List<Button> globalButtons;
@@ -170,7 +164,7 @@ public class SimularthurGUI extends PApplet {
     public void setup() {
         windowTitle(stringRes("windowTitle"));
 
-        stdFont = createFont("Arial", 26, true);  // Größe wird von Hilfetext verwendet
+        stdFont = createFont("Arial", 24, true);  // Größe wird von Hilfetext verwendet
 
         // setup shapes
         boxSide = createShape();
@@ -1208,6 +1202,7 @@ public class SimularthurGUI extends PApplet {
                     "[I] - %s".formatted(stringRes("drawId")),
                     "[T] - %s".formatted(stringRes("toggleTheme")),
                     "\n%s:".formatted(stringRes("input")),
+                    "[%s] - %s".formatted(stringRes("delKey").toUpperCase(), stringRes("delAll")),
                     "%s = 0%c0 | 0%c0e0".formatted(stringRes("decFormat"), fmt.getDecimalFormatSymbols().getDecimalSeparator(), fmt.getDecimalFormatSymbols().getDecimalSeparator()),
                     "%s = 'x;y;z'".formatted(stringRes("vecFormat")),
             };
@@ -1663,6 +1658,8 @@ public class SimularthurGUI extends PApplet {
                 fill(Colors.CP_TF_BACKGROUND_ACTIVE.get(theme));
             if (error)
                 fill(Colors.ERROR.get(theme));
+            if (off || offWhenSim && running)
+                fill(Colors.CP_TF_BACKGROUND_OFF.get(theme));
             rect(pl+refX, refY, getW(), h);
             fill(Colors.CP_TF_TEXT.get(theme));
             textFont(font);
@@ -1812,16 +1809,8 @@ public class SimularthurGUI extends PApplet {
                 else worldEdits.add(new WorldSet(world.setGravity(new Vector3D(0,-9.81,0)).setAirDensity(1.2), null));
             }
             // debug
+            case 'o' -> loadTemplate(this::templateStarWithOrbitAndMoon);
             case 'p' -> loadTemplate(this::templateSolarSystem);
-            case 'z' -> {
-                PVector newCenter = new PVector(
-                        (float) world.getEntities()[1].getPos().getX()*scale,
-                        (float) world.getEntities()[1].getPos().getY()*scale,
-                        (float) world.getEntities()[1].getPos().getZ()*scale);
-                PVector d = PVector.sub(newCenter, camCenter);
-//                camCenter = newCenter;
-                scale = (float) (100 / ((double) world.getEntities()[0].getTypeData()[0] * 2));
-            }
             // / debug
             case CODED -> {
                 switch (keyCode) {
@@ -2010,6 +1999,33 @@ public class SimularthurGUI extends PApplet {
         w0 = w0.spawn(stars);
         entities.put(stars[0].getId(), new Entity(stars[0], color(249, 215, 28)));
         entities.put(stars[1].getId(), new Entity(stars[1], color(40, 122, 184)));
+        return w0;
+    }
+
+    Physicable templateStarWithOrbitAndMoon() {
+        double m = 3e10;
+        double m2 = 3e9;
+        double r = 0.06;
+        double r2 = 0.025;
+        double r3 = 0.01;
+        double d = 0.25;
+        double d2 = 0.05;
+        Physicable w0 = World.create(updateFreq, new Vector3D(1, 1, 1));
+        boxSideColors = IntStream.generate(() -> 0xFF0c1445).limit(6).toArray();
+        Spawnable[] stars = {
+                w0.createSpawnableAt(new Vector3D(0.5,0.5,0.5))
+                        .immovable()
+                        .ofTypeSphere(r, calcSphereDensity(r, m)),
+                w0.createSpawnableAt(new Vector3D(0.5 - d,0.5,0.5))
+                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(d, m)), Vector3D.ZERO)
+                        .ofTypeSphere(r2, calcSphereDensity(r2, m2), 1),
+                w0.createSpawnableAt(new Vector3D(0.5 - d - d2,0.5,0.5))
+                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(d, m) - calcCircularOrbitVel(d2, m2)), Vector3D.ZERO)
+                        .ofTypeSphere(r3, calcSphereDensity(r3, 1), 1)};
+        w0 = w0.spawn(stars);
+        entities.put(stars[0].getId(), new Entity(stars[0], color(249, 215, 28)));
+        entities.put(stars[1].getId(), new Entity(stars[1], color(40, 122, 184)));
+        entities.put(stars[2].getId(), new Entity(stars[2], color(244, 242, 205)));
         return w0;
     }
 
