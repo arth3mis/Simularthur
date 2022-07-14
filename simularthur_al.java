@@ -1,5 +1,5 @@
 // Gesamte AL in einer Datei
-// Codezeilen (nach cloc v1.92): 318
+// Codezeilen (nach cloc v1.92): 316
 //
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.apache.logging.log4j.*;
