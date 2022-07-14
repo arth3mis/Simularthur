@@ -9,7 +9,6 @@ import org.eclipse.collections.api.list.ImmutableList;
 import java.util.stream.DoubleStream;
 
 public class World implements Physicable {
-
     /** Minimale Aktualisierungen pro Sekunde */
     private final double updateFreq;
     /** size: Größe des Raums; gravity: Vektor der Beschleunigung eines homogenen Gravitationsfelds (wie z.B. auf der Erde) */
@@ -55,7 +54,7 @@ public class World implements Physicable {
 
     public Spawner createSpawnableAt(Vector3D position) {
         assert V3.compareComponents(position, size, (p, s) -> p >= 0 && p < s) : "Die Position muss im Raum liegen";
-        return new Spawner(position);
+        return new WorldSpawner(position);
     }
 
     public Physicable spawn(Spawnable... entities) {
@@ -90,17 +89,17 @@ public class World implements Physicable {
         return new World(updateFreq, size, gravity, airDensity, entities.newWithout(entities.select(e -> e.id == id).getAny()));
     }
 
-    public Physicable update(double timeStep) {
+    public Physicable simulateTime(double timeStep) {
         assert Double.isFinite(timeStep) && timeStep >= 0 : "Zeit kann nur endliche Schritte und nicht rückwärts laufen";
         // Wenn eine höhere Update-Frequenz gefordert ist, als timeStep bietet, wird wiederholt aktualisiert
         World world = this;
         for (double dt = timeStep; dt > 0; dt -= 1/updateFreq)
-            world = new World(updateFreq, size, gravity, airDensity, world.simulateChanges(Math.min(dt, 1/updateFreq)));
+            world = new World(updateFreq, size, gravity, airDensity, world.calculateChanges(Math.min(dt, 1/updateFreq)));
         return world;
     }
 
     /** Wendet physikalische Berechnungen auf jeden Körper an */
-    private ImmutableList<Shape> simulateChanges(double dt) {
+    private ImmutableList<Shape> calculateChanges(double dt) {
         LOGGER.info("Zeitschritt ({}s) wird simuliert.", V3.r(dt));
         // Filtern aller Körper, deren Masse eine signifikante Gravitation ausübt
         ImmutableList<Shape> gravityShapes = entities

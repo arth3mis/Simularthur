@@ -10,7 +10,6 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 public class Sphere extends Shape {
-
     private final double radius;
 
     private static final Logger LOGGER = LogManager.getLogger("monitoring");  // todo make global in al.java
@@ -139,7 +138,6 @@ public class Sphere extends Shape {
                 .map(e -> (Sphere) e).filter(e -> s.pos.distance(e.pos) + 1.0e-10 < s.radius + e.radius);
     }
 
-    @Override
     public Object[] getTypeData() {
         return new Object[]{ radius };
     }

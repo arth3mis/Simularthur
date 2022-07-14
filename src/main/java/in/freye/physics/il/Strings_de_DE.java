@@ -52,7 +52,7 @@ public class Strings_de_DE extends ListResourceBundle {
                 {"running", "Rechnet"},
                 {"settings", "Einstellungen"},
                 {"sim", "Simulation"},
-                {"speed", "Geschwindigkeit"},
+                {"speed", "Geschwindigkeit (>0)"},
                 {"apply", "Anwenden"},
                 {"sphereDetail", "Kugeldetail-Level"},
                 {"std", "std"},

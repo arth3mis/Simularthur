@@ -5,8 +5,8 @@ import org.eclipse.collections.api.list.ImmutableList;
 
 
 public abstract class Shape implements Spawnable {
-
-    static final long NO_ID = -1;
+    /** Definiert eine (noch) nicht vorhandene ID */
+    public static final long NO_ID = -1;
     private static long idCounter = 0;
     /**
      * ID des Körpers. Wird in equals() genutzt, um zu testen,

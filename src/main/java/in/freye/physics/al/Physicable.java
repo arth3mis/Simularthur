@@ -10,7 +10,6 @@ import java.util.stream.IntStream;
  * wird in neuen Objekten abgebildet.
  */
 public interface Physicable {
-
     /** Beginnt die Erstellung eines Körpers */
     Spawner createSpawnableAt(Vector3D position);
 
@@ -20,7 +19,7 @@ public interface Physicable {
     Physicable replace(long id, Spawnable entity);
 
     /** Simuliert die Änderungen im System, die im Zeitschritt deltaTime (Einheit Sekunde) passieren */
-    Physicable update(double deltaTime);
+    Physicable simulateTime(double deltaTime);
 
     /** Ändert die Beschleunigung durch allgemeine Gravitation des Raums */
     Physicable setGravity(Vector3D newGravity);
