@@ -1,3 +1,6 @@
+// Gesamte AL in einer Datei
+// Codezeilen (nach cloc v1.92): 318
+//
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.apache.logging.log4j.*;
 import org.eclipse.collections.api.factory.Lists;
@@ -395,6 +398,10 @@ class Sphere extends Shape {
                 // => tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
                 double tColl = prev.acc.toArray()[i] == 0 ? 0 : -(prev.vel.toArray()[i] / prev.acc.toArray()[i])
                         + Math.sqrt(Math.pow((prev.vel.toArray()[i] / prev.acc.toArray()[i]), 2) - 2 * (prev.pos.toArray()[i] - pColl) / prev.acc.toArray()[i]);
+                // Wenn Berechnung keinen reellen Wert ergibt, drehe Vorzeichen von (p-pColl)
+                // tColl = -(v/a) + sqrt((v/a)² - 2(pColl-p)/a)
+                if (Double.isNaN(tColl)) tColl = -(prev.vel.getNorm()/prev.acc.getNorm())
+                        + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (pColl - prev.pos.getNorm()) / prev.acc.getNorm());
                 // Geschwindigkeitskorrektur und Invertierung der Komponente
                 // (Impulserhaltung: Keine Geschwindigkeit auf Wand "übertragbar" -> 100% Reflexion)
                 double v1 = prev.vel.add(tColl, prev.acc).toArray()[i] * bounciness
@@ -428,6 +435,10 @@ class Sphere extends Shape {
                     // tColl = -(v/a) + sqrt((v/a)² - 2(p-pColl)/a)
                     double tColl = -(prev.vel.getNorm()/prev.acc.getNorm())
                             + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (prev.pos.getNorm() - pColl.getNorm()) / prev.acc.getNorm());
+                    // Wenn Berechnung keinen reellen Wert ergibt, drehe Vorzeichen von (p-pColl)
+                    // tColl = -(v/a) + sqrt((v/a)² - 2(pColl-p)/a)
+                    if (Double.isNaN(tColl)) tColl = -(prev.vel.getNorm()/prev.acc.getNorm())
+                            + Math.sqrt(Math.pow(prev.vel.getNorm()/prev.acc.getNorm(), 2) - 2 * (pColl.getNorm() - prev.pos.getNorm()) / prev.acc.getNorm());
                     LOGGER.info("ID={}; Kollision mit ID={} (p{} = {}): Korrekturen: pColl = {}m; vColl = {}m/s",
                             id, b.id, b.id, V3.r(b.pos), V3.r(pColl), Double.isNaN(tColl) ? V3.r(vel) : V3.r(prev.vel.add(tColl, prev.acc)));
                     // tColl ist NaN bei konstanter Geschwindigkeit, dann muss diese nicht korrigiert werden

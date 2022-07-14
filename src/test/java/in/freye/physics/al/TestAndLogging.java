@@ -5,9 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,9 +22,17 @@ class Helper {
     }
 }
 
+
+// Notation in Kommentaren:
+// pX, pY, pZ: Komponenten der Position
+// vX, vY, vZ: Komponenten der Geschwindigkeit
+// aX, aY, aZ: Komponenten der Beschleunigung
+
+
 /**
  * Testet die AL über das Interface.
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PhysicableTest {
 
     Physicable world;
@@ -55,6 +61,7 @@ class PhysicableTest {
      * (auch, wenn das Objekt bereits eine Geschwindigkeit hat).
      */
     @Test
+    @Order(1)
     @DisplayName("Raum-Gravitation wirkt korrekt auf bereits bewegtes Objekt")
     void worldGravity() {
         Physicable w1 = world
@@ -67,7 +74,6 @@ class PhysicableTest {
                 // Zeit um 1s fortschreiten
                 .simulateTime(1);
 
-        // pX: x-Komponente der Position; vY: y-Komponente der Geschwindigkeit; ...
         assertAll(
                 // pX(t)  = 0.5 * aX    * t²    + vX(0s) * t  + pX(0s)
                 // pX(1s) = 0.5 * 0m/s² * (1s)² + 1m/s   * 1s + 5m
@@ -100,6 +106,7 @@ class PhysicableTest {
      * Überprüft, dass sich bei beschleunigter Bewegung und Strömungswiderstand nach einiger Zeit eine konstante Geschwindigkeit einstellt.
      */
     @Test
+    @Order(2)
     @DisplayName("Strömungswiderstand wirkt korrekt auf beschleunigtes Objekt")
     void drag() {
         Physicable w1 = world
@@ -136,6 +143,7 @@ class PhysicableTest {
      * (auch, wenn die Geschwindigkeit nicht konstant ist).
      */
     @Test
+    @Order(3)
     @DisplayName("Beschleunigtes Objekt kollidiert korrekt mit Raumgrenze")
     void wallCollision() {
         Physicable w1 = world
@@ -181,6 +189,7 @@ class PhysicableTest {
      * Die Aufspaltung in zwei Teil-Tests ermöglicht leichter berechenbare & nachvollziehbare erwartete Werte.
      */
     @Test
+    @Order(4)
     @DisplayName("Korrekte Kollisionen zwischen zwei Kugeln")
     void entityCollision() {
         // Werte für 1. Kugelpaar (Massen & Geschwindigkeiten)
@@ -241,6 +250,7 @@ class PhysicableTest {
      * daher ist die Toleranz beim Vergleichen der Werte größer als die global definierte.
      */
     @Test
+    @Order(5)
     @DisplayName("Korrekter Orbital-Flug um anziehendes Objekt")
     void entityGravity() {
         // Kugel im Zentrum
@@ -316,6 +326,7 @@ class PhysicableTest {
  * Da alle physikalischen Berechnungen in der Klasse Shape (→ erweitert in Sphere) stattfinden,
  * werden nur Methoden dieser Klasse getestet.
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class SphereTest {
 
     double tolerance;
@@ -333,6 +344,7 @@ class SphereTest {
      * Überprüft, dass die Gesamtbeschleunigung korrekt berechnet wird.
      */
     @Test
+    @Order(1)
     void calcAcceleration() {
         Shape testObject = new Sphere(Vector3D.ZERO,
                 // Geschwindigkeit 2m/s
@@ -379,6 +391,7 @@ class SphereTest {
      * Setzt voraus, dass calcAcceleration korrekt funktioniert
      */
     @Test
+    @Order(2)
     void applyMovement() {
         // Gravitation
         Vector3D gravity = new Vector3D(0, -9.81, 0);
@@ -423,6 +436,7 @@ class SphereTest {
      * Setzt voraus, dass calcAcceleration und applyMovement korrekt funktionieren
      */
     @Test
+    @Order(3)
     void handleWallCollision() {
         // Raumgröße festlegen
         Vector3D worldSize = new Vector3D(10, 10, 10);
@@ -476,6 +490,7 @@ class SphereTest {
      * Setzt voraus, dass calcAcceleration und applyMovement korrekt funktionieren
      */
     @Test
+    @Order(4)
     void calcEntityCollisionCorrections() {
         // Kugeln, die sich beschleunigt aufeinander zu bewegen
         Shape testObject1 = new Sphere(
@@ -547,6 +562,7 @@ class SphereTest {
      * unabhängig korrekte Berechnungen für die Geschwindigkeiten nach dem Stoß berechnet werden.
      */
     @Test
+    @Order(5)
     void applyEntityCollisionDeflections() {
         // 2 kollidierende Kugeln
         Shape testObject1 = new Sphere(

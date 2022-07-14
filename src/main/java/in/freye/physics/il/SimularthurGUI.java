@@ -103,7 +103,7 @@ public class SimularthurGUI extends PApplet {
     float mouseWheelDelta = 0;
     PVector camEye = new PVector(), camCenter = new PVector();
     boolean[] moveCam = new boolean[6];
-    float moveSpeedFactor = 0.5f;
+    float moveSpeedFactor = 70f;
     boolean drawId = false;
     PFont idDisplayFont;
     PShape boxSide;
@@ -251,8 +251,10 @@ public class SimularthurGUI extends PApplet {
             applySpeed.action = () -> {
                 try {
                     double d = parseD(tfSpeed.input);
-                    if (d > 0)
+                    if (d > 0) {
                         setSimSpeed(d);
+                        applySpeed.success = stdSuccess;
+                    }
                     else throw new ParseException("", 0);
                 } catch (ParseException e) {
                     tfSpeed.input = fmt.format(simSpeed);
@@ -273,6 +275,7 @@ public class SimularthurGUI extends PApplet {
                     if (d > 0) {
                         copyWithUpdateFreq(d);
                         tfFreq.input = fmt.format(updateFreq);
+                        applyFreq.success = stdSuccess;
                     } else throw new ParseException("", 0);
                 } catch (ParseException e) {
                     tfFreq.input = fmt.format(updateFreq);
@@ -828,7 +831,7 @@ public class SimularthurGUI extends PApplet {
         // neue kugel
         if (movable) s1 = w[0].createSpawnableAt(pos).withVelocityAndAccel(vel, selfAcc).ofTypeSphere(radius, density, bounciness);
         else s1 = w[0].createSpawnableAt(pos).immovable().ofTypeSphere(radius, density);
-        worldEdits.add(new WorldReplace(e.id, s1, e.color));
+        worldEdits.add(new WorldReplace(e, s1));
         return s1.getId();
     }
 
@@ -841,6 +844,7 @@ public class SimularthurGUI extends PApplet {
         running = false;
         worldSimStart = w0;
         entitiesSimStart = new HashMap<>(entities);
+        updateFreqSimStart = updateFreq;
         worldEdits.add(new WorldSet(w0, () -> {
             resetSimulatedTime();
             resetView(w0.getSize());
@@ -923,8 +927,8 @@ public class SimularthurGUI extends PApplet {
     String formatD(double d, int prec, boolean fixDec) {
         String fd = fixDec ? "0" : "#";
         DecimalFormat f = null;
-        if (d >= 1e5) f = new DecimalFormat("0.0"+fd.repeat(prec>0?prec-1:0)+"E"+"0".repeat((int)Math.ceil(Math.log10(Math.log10(d)))), fmt.getDecimalFormatSymbols());
         if (prec > 0) f = new DecimalFormat("0."+fd.repeat(prec), fmt.getDecimalFormatSymbols());
+        if (d >= 1e5) f = new DecimalFormat("0.0"+fd.repeat(prec>0?prec-1:dPrec-1)+"E"+"0".repeat((int)Math.ceil(Math.log10(Math.log10(d)))), fmt.getDecimalFormatSymbols());
         if (f == null) return fmt.format(round2Non0s(d, dPrec));
         f.setMinimumFractionDigits(0);
         return f.format(d);
@@ -991,7 +995,7 @@ public class SimularthurGUI extends PApplet {
     }
 
     void update() {
-        float factor = moveSpeedFactor * scale / frameRate;
+        float factor = moveSpeedFactor / frameRate;
 //        PVector mv = PVector.sub(camCenter, camEye).normalize().mult(factor);
 //        if (moveCam[0]) { camCenter.add(mv); camEye.add(mv); }
 //        if (moveCam[1]) { camCenter.sub(mv); camEye.sub(mv); }
@@ -1308,6 +1312,12 @@ public class SimularthurGUI extends PApplet {
             this.color = color;
         }
 
+        float overwriteR = 0;
+        Entity setR(double d) {
+            overwriteR = (float) d;
+            return this;
+        }
+
         void draw(Spawnable shape, boolean drawId) {
             if (id != shape.getId()) return;
             if (shape.getType() == ShapeType.SPHERE) {
@@ -1329,7 +1339,8 @@ public class SimularthurGUI extends PApplet {
                 }
                 noStroke();
                 fill(color);
-                sphere(radius * scale);
+                if (overwriteR > 0) sphere(overwriteR * scale);
+                else sphere(radius * scale);
                 if (drawId) hint(DISABLE_DEPTH_SORT);
                 popMatrix(); popStyle();
             }
@@ -1374,6 +1385,11 @@ public class SimularthurGUI extends PApplet {
         WorldReplace(long id, Spawnable with, int color) {
             super(with, color);
             this.id = id;
+        }
+        WorldReplace(Entity e, Spawnable with) {
+            super(with, e.color);
+            this.id = e.id;
+            ent.overwriteR = e.overwriteR;
         }
         @Override
         public Physicable apply(Physicable target) {
@@ -1795,6 +1811,18 @@ public class SimularthurGUI extends PApplet {
                 if (world.isEarthLike()) worldEdits.add(new WorldSet(world.setGravity(Vector3D.ZERO).setAirDensity(0), null));
                 else worldEdits.add(new WorldSet(world.setGravity(new Vector3D(0,-9.81,0)).setAirDensity(1.2), null));
             }
+            // debug
+            case 'p' -> loadTemplate(this::templateSolarSystem);
+            case 'z' -> {
+                PVector newCenter = new PVector(
+                        (float) world.getEntities()[1].getPos().getX()*scale,
+                        (float) world.getEntities()[1].getPos().getY()*scale,
+                        (float) world.getEntities()[1].getPos().getZ()*scale);
+                PVector d = PVector.sub(newCenter, camCenter);
+//                camCenter = newCenter;
+                scale = (float) (100 / ((double) world.getEntities()[0].getTypeData()[0] * 2));
+            }
+            // / debug
             case CODED -> {
                 switch (keyCode) {
                     case UP -> moveCam[0] = true;
@@ -1838,23 +1866,6 @@ public class SimularthurGUI extends PApplet {
     @Override
     public void mouseWheel(MouseEvent event) {
         mouseWheelDelta += event.getCount();
-    }
-
-    boolean saveState(Physicable world, String fileName) {
-        Locale fmtLocale = Locale.ENGLISH;
-        NumberFormat formatter = NumberFormat.getInstance(fmtLocale);
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(fileName))) {
-            bw.write("updateFreq=" + updateFreq);
-            bw.write("world.size=" + world.getSize().toString(formatter));
-            bw.write("world.gravity=" + world.getGravity().toString(formatter));
-            bw.write("world.airDensity=" + formatter.format(world.getAirDensity()));
-            for (Entity e : entities.values()) {
-
-            }
-        } catch (IOException e) {
-            return false;
-        }
-        return true;
     }
 
     // https://www.demo2s.com/java/java-color-convert-hsl-values-to-a-rgb-color.html
@@ -1922,7 +1933,6 @@ public class SimularthurGUI extends PApplet {
 
     // Vordefinierte Beispiel-Szenarien, die geladen werden können
     //
-
     Physicable templatePoolTable() { return templatePoolTable(false); }
     Physicable templatePoolTable(boolean randomStartSpeed) {
         // Billard
@@ -2000,6 +2010,40 @@ public class SimularthurGUI extends PApplet {
         w0 = w0.spawn(stars);
         entities.put(stars[0].getId(), new Entity(stars[0], color(249, 215, 28)));
         entities.put(stars[1].getId(), new Entity(stars[1], color(40, 122, 184)));
+        return w0;
+    }
+
+    Physicable templateSolarSystem() {
+        double mSun = 1.989e30;
+        double rSun = 6.957e8;
+        double dEarth = 1.5e11;
+        double mEarth = 5.972e24;
+        double rEarth = 6.371e6;
+        double mMoon = 7.35e22;
+        double dMoon = 3.844e8;
+        double rMoon = 1.74e6;
+        // Schnellere Simulation setzen
+        updateFreq = 0.005;
+        setSimSpeed(5e5);
+        Physicable w0 = World.create(updateFreq, new Vector3D(4e11, 2e11, 4e11));
+        boxSideColors = IntStream.generate(() -> 0xFF0c1445).limit(6).toArray();
+        Spawnable[] stars = {
+                // Sonne
+                w0.createSpawnableAt(w0.getSize().scalarMultiply(0.5))
+                        .immovable()
+                        .ofTypeSphere(rSun, calcSphereDensity(rSun, mSun)),
+                // Erde
+                w0.createSpawnableAt(w0.getSize().scalarMultiply(0.5).add(new Vector3D(dEarth,0,0)))
+                        .withVelocityAndAccel(new Vector3D(0,0, -calcCircularOrbitVel(dEarth, mSun)), Vector3D.ZERO)
+                        .ofTypeSphere(rEarth, calcSphereDensity(rEarth, mEarth), 1),
+                // Mond
+                w0.createSpawnableAt(w0.getSize().scalarMultiply(0.5).add(new Vector3D(dEarth + dMoon,0,0)))
+                        .withVelocityAndAccel(new Vector3D(0,0, calcCircularOrbitVel(dMoon, mEarth)-calcCircularOrbitVel(dEarth, mSun)), Vector3D.ZERO)
+                        .ofTypeSphere(rMoon, calcSphereDensity(rMoon, mMoon), 1)};
+        w0 = w0.spawn(stars);
+        entities.put(stars[0].getId(), new Entity(stars[0], color(249, 215, 28)).setR(rSun*20));
+        entities.put(stars[1].getId(), new Entity(stars[1], color(40, 122, 184)).setR(rSun/10));
+        entities.put(stars[2].getId(), new Entity(stars[2], color(254, 252, 215)).setR(rSun/10));
         return w0;
     }
 
