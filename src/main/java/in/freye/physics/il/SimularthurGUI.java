@@ -130,6 +130,7 @@ public class SimularthurGUI extends PApplet {
     DecimalFormat fmt;
     int dPrec = 6, vecPrec = 3;  // Double-Format Präzision (normal und in Vektoren)
     boolean helpShown = true;
+    Button btnStart;
     Button cpBtnExpand, cpBtnHelp;
     Button cpLangDe, cpLangEn;
     List<Button> globalButtons;
@@ -200,8 +201,10 @@ public class SimularthurGUI extends PApplet {
         cpLangDe.action = () -> setLanguage(0);
         cpLangEn = new Button(0, stdH, () -> stringRes("english"), () -> new Float[]{20f+cpLangDe.getW(), height-cpToolbarH/2-stdH/2});
         cpLangEn.action = () -> setLanguage(1);
+        btnStart = new Button(0, stdH, () -> !running ? stringRes("start") : stringRes("pause"), () -> new Float[]{width-btnStart.getW()-10, height-stdH-10});
+        btnStart.action = () -> running = !running;
         // alle zum Aktualisieren hinzufügen
-        globalButtons = List.of(cpBtnHelp, cpLangDe, cpLangEn);
+        globalButtons = List.of(cpBtnHelp, cpLangDe, cpLangEn, btnStart);
 
         sphereDetail(sphereDetail);
 
@@ -624,7 +627,7 @@ public class SimularthurGUI extends PApplet {
         CPPane addPane = nw.newChild();
         {
             // -manuell
-            Label man = new Label(fs1, () -> stringRes("newSphere")+" (ID = "+nextId+")", 0, 0, 0);
+            Label man = new Label(fs1, () -> stringRes("newSphere")+" (ID = "+(nextId-minId)+")", 0, 0, 0);
             addPane.add(man);
             // (random) pos
             Label p = new Label(fs2, () -> stringRes("pos"), 25, 0, 0);
@@ -2112,7 +2115,8 @@ public class SimularthurGUI extends PApplet {
     Physicable templateSphereCluster(int n) {
         if (n > 500) {
             int sd = (int) Math.round(30 - (30-6) / (2000.0-500.0) * (n - 500));
-            sphereDetail(max(sd, 6));
+            sphereDetail = max(sd, 6);
+            sphereDetail(sphereDetail);
         }
         Physicable w0 = World.create(updateFreq, new Vector3D(1,1,1))
                 .setGravity(new Vector3D(0, -9.81, 0))

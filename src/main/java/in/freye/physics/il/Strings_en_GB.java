@@ -101,6 +101,8 @@ public class Strings_en_GB extends ListResourceBundle {
                 {"templateLogging", "Horizontal throw with collisions"},
                 {"loading", "Loading..."},
                 {"count", "Count"},
+                {"start", "Start"},
+                {"pause", "Pause"},
 
 
 

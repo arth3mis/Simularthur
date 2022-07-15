@@ -101,6 +101,8 @@ public class Strings_de_DE extends ListResourceBundle {
                 {"templateLogging", "Waagerechter Wurf mit Kollisionen"},
                 {"loading", "Lädt..."},
                 {"count", "Anzahl"},
+                {"start", "Start"},
+                {"pause", "Pause"},
 
 
 
