@@ -93,6 +93,7 @@ public class SimularthurGUI extends PApplet {
     CompletableFuture<Physicable> braveNewWorld;
     Map<Long, Entity> entities;
     Map<Long, Entity> entitiesSimStart;
+    long minId = Shape.NO_ID;
 
     // Variablen (Anzeige der Simulation)
     float stdYaw = PI / 9, stdPitch = PI - PI / 5;
@@ -467,7 +468,7 @@ public class SimularthurGUI extends PApplet {
         edit.longLoad = true;
         edit.action = () -> {
             try {
-                long l = fmt.parse(tfId.input).longValue();
+                long l = fmt.parse(tfId.input).longValue() + minId;
                 if (tfId.input.isEmpty() || getEnt(l) == null) throw new ParseException("", 0);
                 currEnt = l;
                 if (edit.longLoad) drawLoading(edit);
@@ -481,7 +482,7 @@ public class SimularthurGUI extends PApplet {
         CPPane editPane = edit.newChild();
         entEditPane = editPane;
         {
-            Label li = new Label(fs1, () -> stringRes("id")+" = "+currEnt, 0, 0, 0);
+            Label li = new Label(fs1, () -> stringRes("id")+" = "+(currEnt - minId), 0, 0, 0);
             Label p = new Label(fs2, () -> stringRes("pos"), m2, 0, 0);
             TextField tfP = new TextField(iw1, stdH, "", m3, 0, 0)
                     .runningUpdate();
@@ -545,7 +546,7 @@ public class SimularthurGUI extends PApplet {
                 }
                 if (newId != Shape.NO_ID) {
                     currEnt = newId;
-                    tfId.input = ""+newId;
+                    tfId.input = ""+(newId - minId);
                     applyAll.success = stdSuccess;
                 } else {
                     currentPane.update();
@@ -558,8 +559,8 @@ public class SimularthurGUI extends PApplet {
         Button del = new Button(0, stdH, () -> stringRes("del"), m3, 0, indent);
         del.action = () -> {
             try {
-                long l = fmt.parse(tfId.input).longValue();
-                Spawnable s = Arrays.stream(world.getEntities()).filter(e -> e.getId() == l).findAny().orElseThrow();
+                long l = fmt.parse(tfId.input).longValue() + minId;
+                Arrays.stream(world.getEntities()).filter(e -> e.getId() == l).findAny().orElseThrow();
                 worldEdits.add(new WorldReplace(l, null, 0));
                 del.success = stdSuccess;
             } catch (ParseException | NoSuchElementException e) {
@@ -593,8 +594,8 @@ public class SimularthurGUI extends PApplet {
                 Vector3D vel = parseV3(tfV.input);
                 double factor = 0;
                 boolean error = false;
-                try { ids[0] = fmt.parse(tf1.input).longValue(); if (Arrays.stream(world.getEntities()).noneMatch(e -> e.getId() == ids[0])) throw new Exception(); } catch (Exception e) {tf1.error=error=true;}
-                try { ids[1] = fmt.parse(tf2.input).longValue(); if (Arrays.stream(world.getEntities()).noneMatch(e -> e.getId() == ids[1])) throw new Exception(); } catch (Exception e) {tf2.error=error=true;}
+                try { ids[0] = fmt.parse(tf1.input).longValue() + minId; if (Arrays.stream(world.getEntities()).noneMatch(e -> e.getId() == ids[0])) throw new Exception(); } catch (Exception e) {tf1.error=error=true;}
+                try { ids[1] = fmt.parse(tf2.input).longValue() + minId; if (Arrays.stream(world.getEntities()).noneMatch(e -> e.getId() == ids[1])) throw new Exception(); } catch (Exception e) {tf2.error=error=true;}
                 if (vel == null) tfV.error=error=true;
                 else try { factor = parseD(tfF.input); } catch (Exception e) {tfF.error=error=true;}
                 if (error) return;
@@ -764,12 +765,13 @@ public class SimularthurGUI extends PApplet {
     String minId() {
         long l = Arrays.stream(world.getEntities()).mapToLong(Spawnable::getId).min().orElse(Shape.NO_ID);
         if (l == Shape.NO_ID) return "";
-        return ""+l;
+        minId = l;
+        return "0";
     }
     String maxId() {
         long l = Arrays.stream(world.getEntities()).mapToLong(Spawnable::getId).max().orElse(Shape.NO_ID);
         if (l == Shape.NO_ID) return "";
-        return ""+l;
+        return ""+(l-minId);
     }
 
     void vectorSetAction(TextField tf, Consumer<Vector3D> action) {
@@ -1005,6 +1007,8 @@ public class SimularthurGUI extends PApplet {
         if (moveCam[1]) camCenter.y -= factor;
         if (moveCam[2]) camCenter.add(cos(pitch)*cosYaw * factor,0,-sin(pitch)*cosYaw * factor);
         if (moveCam[3]) camCenter.sub(cos(pitch)*cosYaw * factor,0,-sin(pitch)*cosYaw * factor);
+
+        minId();
 
         // Ergebnis der asynchronen Berechnung?
         if (braveNewWorld != null && braveNewWorld.isDone()) {
@@ -1337,7 +1341,7 @@ public class SimularthurGUI extends PApplet {
                     textFont(idDisplayFont, radius * scale);
                     textAlign(CENTER, CENTER);
                     fill(255);
-                    text(""+shape.getId(), 0, 0, radius * scale);
+                    text(""+(shape.getId()-minId), 0, 0, radius * scale);
                     popMatrix();
                 }
                 noStroke();
@@ -1398,6 +1402,8 @@ public class SimularthurGUI extends PApplet {
         public Physicable apply(Physicable target) {
             assert id != Shape.NO_ID;
             entities.remove(id);
+            if (Arrays.stream(target.getEntities()).noneMatch(e -> e.getId() == id))
+                return target;
             if (shape != null)
                 entities.put(ent.id, ent);
             return target.replace(id, shape);
@@ -1454,6 +1460,8 @@ public class SimularthurGUI extends PApplet {
                 clicked = i.isClicked(refX, refY) || clicked;
                 refY += i.h + i.mb;
             }
+            if (clicked)
+                minId();
             return clicked;
         }
 
@@ -1851,6 +1859,8 @@ public class SimularthurGUI extends PApplet {
             helpShown = false;
             return;
         }
+        // Update minId
+        minId();
         // Klicks
         if (cpBtnExpand.isClicked())
             return;
@@ -2100,6 +2110,10 @@ public class SimularthurGUI extends PApplet {
 
     Physicable templateSphereCluster() { return templateSphereCluster(100); }
     Physicable templateSphereCluster(int n) {
+        if (n > 500) {
+            int sd = (int) Math.round(30 - (30-6) / (2000.0-500.0) * (n - 500));
+            sphereDetail(max(sd, 6));
+        }
         Physicable w0 = World.create(updateFreq, new Vector3D(1,1,1))
                 .setGravity(new Vector3D(0, -9.81, 0))
                 .setAirDensity(1.2);

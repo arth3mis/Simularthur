@@ -104,7 +104,7 @@ public class Strings_de_DE extends ListResourceBundle {
 
 
 
-                {"idWarn", "Nach Anpassungen bekommt\nder Körper eine neue ID,\ndie alte existiert dann nicht mehr."},
+                {"idWarn", "Nach Anpassungen bekommt\nder Körper evtl. eine neue ID!"},
                 {"helpUpdateFreq", """
 Die Aktualisierungsfrequenz ist das
 'Genauigkeitsversprechen' des Systems.

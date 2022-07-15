@@ -104,7 +104,7 @@ public class Strings_en_GB extends ListResourceBundle {
 
 
 
-                {"idWarn", "After editing, the shape will get a new ID,\nthe old one is discarded."},
+                {"idWarn", "After editing, the shape will\nmaybe get a new ID!"},
                 {"helpUpdateFreq", """
 The update frequency is the
 'accuracy promise' of the system.
