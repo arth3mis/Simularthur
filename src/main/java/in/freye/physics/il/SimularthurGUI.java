@@ -292,12 +292,7 @@ public class SimularthurGUI extends PApplet {
             };
             Button cs = new Button(0, stdH, () -> stringRes("cancelSimShort"), m2, 0, 0);
             cs.action = this::cancelSim;
-            Button te = new Button(0, stdH, () -> stringRes("toggleEarthShort"), m2, 0, 0);
-            te.action = () -> {
-                if (world.isEarthLike()) worldEdits.add(new WorldSet(world.setGravity(Vector3D.ZERO).setAirDensity(0), null));
-                else worldEdits.add(new WorldSet(world.setGravity(new Vector3D(0,-9.81,0)).setAirDensity(1.2), null));
-            };
-            simPane.add(rt, rw, cs, te);
+            simPane.add(rt, rw, cs);
         }
         // *Welt
         Button wld = new Button(0, stdH, () -> stringRes("world"), m2, 0, indent);
@@ -348,7 +343,12 @@ public class SimularthurGUI extends PApplet {
                     tfAir.error = true;
                 }
             };
-            wldPane.add(size, tfSize, applySize, grav, tfGrav, applyGrav, air, tfAir, applyAir);
+            Button te = new Button(0, stdH, () -> stringRes("toggleEarthShort"), m1, 0, 0);
+            te.action = () -> {
+                if (world.isEarthLike()) worldEdits.add(new WorldSet(world.setGravity(Vector3D.ZERO).setAirDensity(0), null));
+                else worldEdits.add(new WorldSet(world.setGravity(new Vector3D(0,-9.81,0)).setAirDensity(1.2), null));
+            };
+            wldPane.add(size, tfSize, applySize, grav, tfGrav, applyGrav, air, tfAir, applyAir, te);
         }
         // *Ansicht
         Button view = new Button(0, stdH, () -> stringRes("display"), m2, 0, indent);
