@@ -35,20 +35,28 @@ public class SimularthurGUI extends PApplet {
      * Demonstration, wie die Interfaces der AL angewendet werden können
      */
     void test() {
+        // Welt initialisieren
         Physicable w = World.create(60, new Vector3D(1,1,1))
                 .setGravity(new Vector3D(0, -9.81, 0))
                 .setAirDensity(1.2);
 
+        // Körper für die Welt erschaffen
         Spawnable s = w
                 .createSpawnableAt(new Vector3D(.5,.5,.5))
                 .withVelocityAndAccel(new Vector3D(1,1,0), Vector3D.ZERO)
                 .ofTypeSphere(1,1,1);
 
+        // Körper einfügen
         w = w.spawn(s);
 
+        // 1s Zeit simulieren
         w = w.simulateTime(1);
 
+        // Alle Körper auslesen
         Spawnable[] s1 = w.getEntities();
+
+        // Körper löschen
+        w.replace(s1[0].getId(), null);
     }
 
 
